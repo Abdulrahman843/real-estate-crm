@@ -3,23 +3,22 @@ const router = express.Router();
 const Joi = require('joi');
 const {
     getProperties,
+    getAgentProperties,
     getProperty,
     createProperty,
     updateProperty,
     deleteProperty,
-    uploadPropertyImages,
-    deletePropertyImage,
-    searchProperties,
-    getFeaturedProperties,
     updatePropertyStatus,
+    uploadPropertyImage,
     uploadPropertyGallery,
-    getPropertyAnalytics,
+    deletePropertyImage,
     toggleFavorite,
     getFavorites,
-    trackPropertyView,
     addPropertyReview,
     getPropertyReviews,
-    reportProperty
+    reportProperty,
+    getPropertyAnalytics,
+    trackPropertyView
 } = require('../controllers/propertyController');
 const { protect, authorize, validateRequest } = require('../middleware/authMiddleware');
 const { uploadMiddleware, handleUploadError } = require('../middleware/uploadMiddleware');
@@ -33,6 +32,7 @@ const propertySchema = {
         address: Joi.string().required(),
         city: Joi.string().required(),
         state: Joi.string().required(),
+        country: Joi.string().required(),
         zipCode: Joi.string().required(),
         coordinates: Joi.object({
             lat: Joi.number(),
@@ -51,11 +51,12 @@ const propertySchema = {
     type: Joi.string().valid('apartment', 'house', 'condo', 'villa', 'office')
 };
 
-// Public routes
+// PUBLIC ROUTES
 router.get('/', getProperties);
-router.get('/search', searchProperties);
-router.get('/featured', getFeaturedProperties);
 router.get('/:id', getProperty);
+router.get('/agent/:agentId', getAgentProperties);
+router.get('/search', getProperties); // or custom handler if needed
+router.get('/featured', getProperties); // or custom handler if needed
 router.get('/:id/reviews', getPropertyReviews);
 
 // Protected routes
@@ -74,38 +75,38 @@ router.patch(
     updatePropertyStatus
 );
 
+// Favorites
+router.post('/:id/favorite', toggleFavorite);
+router.get('/favorites/me', getFavorites);
+
+// Reviews & Reports
+router.post('/:id/reviews', addPropertyReview);
+router.post('/:id/report', reportProperty);
+
+// Analytics & Views
+router.get('/:id/analytics', authorize('admin', 'agent'), getPropertyAnalytics);
+router.post('/:id/track', trackPropertyView);
+
 // Image upload and gallery
 router.post(
     '/:id/images',
     authorize('admin', 'agent'),
     uploadMiddleware.array('images', 10),
     handleUploadError,
-    uploadPropertyImages
-);
-router.post(
-    '/:id/gallery',
-    authorize('admin', 'agent'),
-    uploadMiddleware.fields([
-        { name: 'featured', maxCount: 1 },
-        { name: 'gallery', maxCount: 8 }
-    ]),
-    handleUploadError,
     uploadPropertyGallery
 );
+router.post(
+    '/:id/upload-image',
+    authorize('admin', 'agent'),
+    uploadMiddleware.single('image'),
+    handleUploadError,
+    uploadPropertyImage
+  );
+
 router.delete(
     '/:id/images/:imageId',
     authorize('admin', 'agent'),
     deletePropertyImage
 );
-
-// User interaction
-router.post('/:id/favorite', toggleFavorite);
-router.get('/favorites/me', getFavorites);
-router.post('/:id/reviews', addPropertyReview);
-router.post('/:id/report', reportProperty);
-
-// Analytics
-router.get('/:id/analytics', authorize('admin', 'agent'), getPropertyAnalytics);
-router.post('/:id/track', trackPropertyView);
 
 module.exports = router;

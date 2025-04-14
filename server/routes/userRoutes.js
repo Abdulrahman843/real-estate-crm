@@ -21,6 +21,7 @@ const {
   enableTwoFactor,
   verifyEmail,
   resetPassword,
+  resetPasswordRequest,
   refreshToken
 } = require('../controllers/userController');
 
@@ -105,7 +106,8 @@ const notImplemented = (req, res) => res.status(501).json({ message: 'Not implem
 router.post('/register', registerLimiter, validateRequest(registerSchema), registerUser || notImplemented);
 router.post('/login', loginLimiter, validateRequest(loginSchema), loginUser || notImplemented);
 router.post('/refresh-token', refreshToken || notImplemented);
-router.post('/reset-password', resetPasswordLimiter, resetPassword || notImplemented);
+router.post('/reset-password/:token', resetPasswordLimiter, resetPassword || notImplemented);
+router.post('/forgot-password', resetPasswordLimiter, resetPassword || notImplemented);
 router.get('/verify-email/:token', verifyEmail || notImplemented);
 
 // Protected user routes

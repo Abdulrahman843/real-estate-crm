@@ -1,33 +1,38 @@
 export const validateProfile = (profile) => {
-    const errors = [];
-    
-    if (!profile.email?.match(/^[^\s@]+@[^\s@]+\.[^\s@]+$/)) {
-      errors.push('Invalid email address');
+  const errors = [];
+
+  // Validate first name
+  if (!profile.firstName?.trim()) {
+    errors.push('First name is required');
+  }
+
+  // Validate last name
+  if (!profile.lastName?.trim()) {
+    errors.push('Last name is required');
+  }
+
+  // Validate email format
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(profile.email || '')) {
+    errors.push('Invalid email address');
+  }
+
+  // Validate phone (optional)
+  if (profile.phone && !/^\+?[\d\s-]{10,}$/.test(profile.phone)) {
+    errors.push('Invalid phone number');
+  }
+
+  // Validate password (optional but strict if present)
+  if (profile.password) {
+    if (profile.password.length < 8) {
+      errors.push('Password must be at least 8 characters');
     }
-  
-    if (profile.phone && !profile.phone.match(/^\+?[\d\s-]{10,}$/)) {
-      errors.push('Invalid phone number');
+    if (!/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{8,}$/.test(profile.password)) {
+      errors.push('Password must contain both letters and numbers');
     }
-  
-    if (!profile.firstName?.trim()) {
-      errors.push('First name is required');
-    }
-  
-    if (!profile.lastName?.trim()) {
-      errors.push('Last name is required');
-    }
-  
-    if (profile.password) {
-      if (profile.password.length < 8) {
-        errors.push('Password must be at least 8 characters');
-      }
-      if (!profile.password.match(/^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*#?&]{8,}$/)) {
-        errors.push('Password must contain letters and numbers');
-      }
-    }
-  
-    return {
-      isValid: errors.length === 0,
-      errors
-    };
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors
   };
+};

@@ -1,5 +1,7 @@
 const mongoose = require('mongoose');
-const config = require('./config/config');
+const dotenv = require('dotenv');
+const config = require('./config');
+dotenv.config();
 
 const connectDB = async () => {
   try {

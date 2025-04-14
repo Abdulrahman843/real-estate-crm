@@ -1,23 +1,15 @@
+// routes/dashboardRoutes.js
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/authMiddleware');
+const { protect, authorize } = require('../middleware/authMiddleware');
+const { getDashboardStats } = require('../controllers/dashboardController');
 
-router.get('/', protect, async (req, res) => {
-  try {
-    // TODO: Implement dashboard data aggregation
-    const dashboardData = {
-      stats: {
-        totalProperties: 0,
-        activeListings: 0,
-        totalViews: 0,
-        inquiries: 0
-      },
-      recentActivity: []
-    };
-    res.json(dashboardData);
-  } catch (error) {
-    res.status(500).json({ message: 'Error fetching dashboard data' });
-  }
-});
+// Unified GET /api/dashboard for all roles
+router.get('/', protect, authorize('admin', 'agent', 'client'), getDashboardStats);
 
+router.get('/', (req, res) => {
+    console.log('Dashboard route hit');
+    res.json({ message: 'Dashboard OK' });
+  });
+  
 module.exports = router;

@@ -1,14 +1,16 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Container, Alert, CircularProgress, Box } from '@mui/material';
-import PropertyForm from '../../components/properties/PropertyForm';
+// real-estate-crm/client/src/pages/Properties/EditProperty.jsx
+
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Typography, Box, Paper, CircularProgress } from '@mui/material';
+import PropertyForm from './PropertyForm';
 import { propertyService } from '../../services/propertyService';
 
 const EditProperty = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [property, setProperty] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -16,10 +18,10 @@ const EditProperty = () => {
       try {
         const data = await propertyService.getPropertyById(id);
         setProperty(data);
-      } catch (err) {
-        setError(err.response?.data?.message || 'Failed to fetch property');
+      } catch {
+        setError('Failed to load property');
       } finally {
-        setIsLoading(false);
+        setLoading(false);
       }
     };
 
@@ -28,19 +30,16 @@ const EditProperty = () => {
 
   const handleSubmit = async (formData) => {
     try {
-      setIsLoading(true);
-      setError(null);
       await propertyService.updateProperty(id, formData);
-      navigate('/properties');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Failed to update property');
-      setIsLoading(false);
+      navigate(`/properties/${id}`);
+    } catch {
+      setError('Failed to update property');
     }
   };
 
-  if (isLoading) {
+  if (loading) {
     return (
-      <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
         <CircularProgress />
       </Box>
     );
@@ -48,20 +47,19 @@ const EditProperty = () => {
 
   if (error) {
     return (
-      <Container maxWidth="lg">
-        <Alert severity="error">{error}</Alert>
-      </Container>
+      <Box sx={{ p: 3 }}>
+        <Typography color="error">{error}</Typography>
+      </Box>
     );
   }
 
   return (
-    <Container maxWidth="lg">
-      <PropertyForm
-        initialData={property}
-        onSubmit={handleSubmit}
-        isLoading={isLoading}
-      />
-    </Container>
+    <Box sx={{ p: 3 }}>
+      <Typography variant="h5" gutterBottom>Edit Property</Typography>
+      <Paper sx={{ p: 3 }}>
+        <PropertyForm initialValues={property} onSubmit={handleSubmit} />
+      </Paper>
+    </Box>
   );
 };
 

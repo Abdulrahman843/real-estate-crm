@@ -1,23 +1,35 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Container, Paper, TextField, Button, Typography, Box } from '@mui/material';
+import {
+  Container, Paper, TextField, Button, Typography, Box, Checkbox,
+  FormControlLabel, useTheme
+} from '@mui/material';
 import { toast } from 'react-toastify';
-import api from '../../services/api';
+import authService from '../../services/authService'; // ✅ Using centralized auth logic
 
 function Login() {
   const navigate = useNavigate();
+  const theme = useTheme();
+
   const [formData, setFormData] = useState({
     email: '',
-    password: ''
+    password: '',
+    rememberMe: false
   });
 
   const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+    const rememberedEmail = localStorage.getItem('rememberedEmail');
+    if (rememberedEmail) {
+      setFormData(prev => ({ ...prev, email: rememberedEmail, rememberMe: true }));
+    }
+  }, []);
+
   const validateForm = () => {
     const newErrors = {};
-    
-    // Email validation
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!formData.email) {
       newErrors.email = 'Email is required';
@@ -25,7 +37,6 @@ function Login() {
       newErrors.email = 'Invalid email format';
     }
 
-    // Password validation
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 6) {
@@ -37,28 +48,35 @@ function Login() {
   };
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    // Clear error when user starts typing
-    if (errors[e.target.name]) {
-      setErrors({ ...errors, [e.target.name]: '' });
+    const { name, value, checked, type } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
+    }));
+
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     setIsLoading(true);
     try {
-      const response = await api.post('/auth/login', formData);
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data));
-      toast.success('Login successful!');
+      const { user } = await authService.login(formData); // ✅ Call authService
+
+      if (formData.rememberMe) {
+        localStorage.setItem('rememberedEmail', formData.email);
+      } else {
+        localStorage.removeItem('rememberedEmail');
+      }
+
+      toast.success(`Welcome back, ${user.name.split(' ')[0]}!`);
       navigate('/');
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Login failed');
+      toast.error(error.message || 'Login failed');
     } finally {
       setIsLoading(false);
     }
@@ -67,7 +85,12 @@ function Login() {
   return (
     <Container component="main" maxWidth="xs">
       <Box sx={{ mt: 8, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <Paper elevation={3} sx={{ p: 4, width: '100%' }}>
+        <Paper elevation={3} sx={{
+          p: 4,
+          width: '100%',
+          bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'background.paper',
+          color: theme.palette.text.primary
+        }}>
           <Typography component="h1" variant="h5" align="center" gutterBottom>
             Sign In
           </Typography>
@@ -102,19 +125,33 @@ function Login() {
               helperText={errors.password}
               disabled={isLoading}
             />
+
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={formData.rememberMe}
+                  onChange={handleChange}
+                  name="rememberMe"
+                  disabled={isLoading}
+                />
+              }
+              label="Remember me"
+            />
+
             <Button
               type="submit"
               fullWidth
               variant="contained"
-              sx={{ mt: 3, mb: 2 }}
+              sx={{ mt: 2, mb: 2 }}
               disabled={isLoading}
             >
               {isLoading ? 'Signing in...' : 'Sign In'}
             </Button>
-            <Typography align="center">
-              Don't have an account?{' '}
+
+            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+              <Link to="/forgot-password">Forgot password?</Link>
               <Link to="/register">Register</Link>
-            </Typography>
+            </Box>
           </Box>
         </Paper>
       </Box>

@@ -13,10 +13,12 @@ import {
   Bathtub, SquareFoot, Search, GridView, ViewList, Compare, Close
 } from '@mui/icons-material';
 import { propertyService } from '../../services/propertyService';
-import { PropertyRecommendationService } from '../../services/recommendationService';
 import PropertyFilters from './PropertyFilters';
 import PropertyMap from './PropertyMap';
 import PropertyAnalytics from '../dashboard/PropertyAnalytics';
+import { getFeatureFlags } from '../../config/featureFlags';
+
+const featureFlags = getFeatureFlags();
 
 const PropertySkeleton = () => (
   <Card>
@@ -68,12 +70,13 @@ const PropertyList = () => {
       });
       setProperties(response.properties);
       setTotalPages(Math.ceil(response.total / itemsPerPage));
+      if (featureFlags.enableAnalytics) setAnalyticsData(response.analytics || null);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, sortBy, page, filters, itemsPerPage]);
+  }, [searchQuery, sortBy, page, filters]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -161,7 +164,11 @@ const PropertyList = () => {
       </Box>
 
       <Stack spacing={3} sx={{ mb: 3 }}>
-        <Box sx={{ display: 'flex', gap: 2 }}>
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: isMobile ? 'column' : 'row', 
+          gap: 2 
+        }}>
           <TextField
             fullWidth
             placeholder="Search properties..."
@@ -186,7 +193,7 @@ const PropertyList = () => {
             <ToggleButton value="list"><ViewList /></ToggleButton>
           </ToggleButtonGroup>
 
-          {selectedProperties.length > 0 && (
+          {featureFlags.enablePropertyComparison && selectedProperties.length > 0 && (
             <Button variant="outlined" startIcon={<Compare />} onClick={handleCompare}>
               Compare ({selectedProperties.length})
             </Button>
@@ -229,7 +236,7 @@ const PropertyList = () => {
       )}
 
       <PropertyMap properties={properties} />
-      <PropertyAnalytics data={analyticsData} />
+      {featureFlags.enableAnalytics && <PropertyAnalytics data={analyticsData} />}
 
       <Dialog open={compareMode} onClose={() => setCompareMode(false)} maxWidth="lg" fullWidth>
         <DialogTitle>

@@ -3,7 +3,7 @@ import {
   Box, Paper, TextField, Button, Grid, FormControl,
   InputLabel, Select, MenuItem, Typography, IconButton,
   ImageList, ImageListItem, ImageListItemBar, LinearProgress,
-  Chip, Stack
+  Chip, Stack, CircularProgress
 } from '@mui/material';
 import { Delete, Add } from '@mui/icons-material';
 import { useFormik } from 'formik';
@@ -89,6 +89,7 @@ const PropertyForm = ({ initialData, onSubmit, isLoading }) => {
       amenities: []
     },
     validationSchema,
+    enableReinitialize: true,
     onSubmit: async (values) => {
       try {
         if (imageFiles.length === 0) {
@@ -126,25 +127,20 @@ const PropertyForm = ({ initialData, onSubmit, isLoading }) => {
           </Typography>
         </Grid>
 
-        {[
-          { name: 'title', label: 'Property Title' },
-          { name: 'description', label: 'Description', multiline: true, rows: 4 },
-          { name: 'price', label: 'Price', type: 'number' },
-          { name: 'location', label: 'Location' },
-          { name: 'area', label: 'Area (sq ft)', type: 'number' },
-          { name: 'bedrooms', label: 'Bedrooms', type: 'number' },
-          { name: 'bathrooms', label: 'Bathrooms', type: 'number' }
-        ].map(({ name, ...rest }) => (
+        {[ 'title', 'description', 'price', 'location', 'area', 'bedrooms', 'bathrooms' ].map(name => (
           <Grid item xs={12} sm={6} key={name}>
             <TextField
               fullWidth
               name={name}
+              label={name.charAt(0).toUpperCase() + name.slice(1)}
               value={formik.values[name]}
               onChange={formik.handleChange}
               onBlur={formik.handleBlur}
               error={formik.touched[name] && Boolean(formik.errors[name])}
               helperText={formik.touched[name] && formik.errors[name]}
-              {...rest}
+              multiline={name === 'description'}
+              rows={name === 'description' ? 4 : undefined}
+              type={['price', 'area', 'bedrooms', 'bathrooms'].includes(name) ? 'number' : 'text'}
             />
           </Grid>
         ))}
@@ -169,7 +165,6 @@ const PropertyForm = ({ initialData, onSubmit, isLoading }) => {
           </FormControl>
         </Grid>
 
-        {/* Amenities */}
         <Grid item xs={12}>
           <Typography variant="subtitle1" gutterBottom>Amenities</Typography>
           <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
@@ -196,7 +191,6 @@ const PropertyForm = ({ initialData, onSubmit, isLoading }) => {
           )}
         </Grid>
 
-        {/* Image Upload */}
         <Grid item xs={12}>
           <Button component="label" variant="outlined" startIcon={<Add />} sx={{ mt: 1 }} disabled={uploadProgress > 0}>
             Upload Images
@@ -234,11 +228,10 @@ const PropertyForm = ({ initialData, onSubmit, isLoading }) => {
           </ImageList>
         </Grid>
 
-        {/* Submit Button */}
         <Grid item xs={12}>
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
             <Button type="button" onClick={() => window.history.back()}>Cancel</Button>
-            <Button type="submit" variant="contained" disabled={isLoading || !formik.isValid}>
+            <Button type="submit" variant="contained" disabled={isLoading || !formik.isValid} startIcon={isLoading && <CircularProgress size={20} color="inherit" />}>
               {isLoading ? 'Saving...' : initialData ? 'Update' : 'Create'}
             </Button>
           </Box>

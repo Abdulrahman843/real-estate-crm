@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Grid, Paper, Typography, Divider } from '@mui/material';
+import { Box, Grid, Paper, Typography } from '@mui/material';
 import { useParams } from 'react-router-dom';
-import axios from 'axios';
 
-import useAuth from '../hooks/useAuth';
+import useAuth from '../contexts/useAuth';
 import websocketService from '../services/websocketService';
+import api from '../services/api';
 
 import ConversationList from '../components/messaging/ConversationList';
 import MessageChat from '../components/messaging/MessageChat';
@@ -15,7 +15,7 @@ const MessagingPage = () => {
   const { conversationId } = useParams();
   const { user } = useAuth();
 
-  // Fetch conversations and establish WebSocket
+  // Initialize socket & fetch conversations
   useEffect(() => {
     if (user?.id) {
       websocketService.connect(user.id);
@@ -25,20 +25,22 @@ const MessagingPage = () => {
     return () => websocketService.disconnect();
   }, [user]);
 
-  // Select a conversation if one is in the URL
+  // Highlight selected conversation
   useEffect(() => {
     if (conversationId && conversations.length) {
       const convo = conversations.find(c => c._id === conversationId);
-      if (convo) setSelectedConversation(convo);
+      if (convo) {
+        setSelectedConversation(convo);
+      }
     }
   }, [conversationId, conversations]);
 
   const fetchConversations = async () => {
     try {
-      const response = await axios.get('/api/conversations');
+      const response = await api.get('/conversations');
       setConversations(response.data);
-    } catch (error) {
-      console.error('Error fetching conversations:', error);
+    } catch (err) {
+      console.error('Failed to load conversations:', err);
     }
   };
 
@@ -63,18 +65,18 @@ const MessagingPage = () => {
           </Paper>
         </Grid>
 
-        {/* Chat Window */}
+        {/* Chat */}
         <Grid item xs={12} md={8}>
           <Paper sx={{ height: '100%', borderRadius: 0 }}>
             {selectedConversation ? (
               <>
                 <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
                   <Typography variant="h6">
-                    {selectedConversation.user?.name || 'Chat'}
+                    {selectedConversation.user?.name || 'User'}
                   </Typography>
                   {selectedConversation.property && (
                     <Typography variant="body2" color="text.secondary">
-                      Re: {selectedConversation.property.title}
+                      Regarding: {selectedConversation.property.title}
                     </Typography>
                   )}
                 </Box>

@@ -105,21 +105,40 @@ const loginUser = async (req, res) => {
 };
 
 // Update profile
+// Update profile
 const updateProfile = async (req, res) => {
     try {
-        const allowedUpdates = ['name', 'phone', 'preferences', 'notifications'];
-        const updates = Object.keys(req.body)
-            .filter(key => allowedUpdates.includes(key))
-            .reduce((obj, key) => {
-                obj[key] = req.body[key];
-                return obj;
-            }, {});
+        const rootFields = ['name', 'email'];
+        const profileFields = [
+            'phone',
+            'address',
+            'bio',
+            'company',
+            'website',
+            'socialMedia'
+        ];
 
-        const user = await User.findByIdAndUpdate(
-            req.user._id,
-            updates,
-            { new: true, runValidators: true }
-        ).select('-password');
+        const rootUpdates = {};
+        const profileUpdates = {};
+
+        Object.entries(req.body).forEach(([key, value]) => {
+            if (rootFields.includes(key)) {
+                rootUpdates[key] = value;
+            } else if (profileFields.includes(key)) {
+                profileUpdates[key] = value;
+            }
+        });
+
+        const user = await User.findById(req.user._id);
+        if (!user) return res.status(404).json({ message: 'User not found' });
+
+        Object.assign(user, rootUpdates);
+        user.profile = {
+            ...user.profile,
+            ...profileUpdates
+        };
+
+        await user.save();
 
         res.json(user);
     } catch (error) {

@@ -1,24 +1,29 @@
+/* real-estate-crm/client/src/App.css */
+
+/* === Global Defaults === */
 #root {
-  max-width: 1280px;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  padding: 1rem;
+  font-family: 'Roboto', sans-serif;
+  background-color: var(--background);
+  color: var(--text);
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
+/* === Theming Variables (overridden via MUI theme) === */
+:root {
+  --background: #ffffff;
+  --text: #121212;
 }
 
-@keyframes logo-spin {
+[data-theme='dark'] {
+  --background: #121212;
+  --text: #f5f5f5;
+}
+
+/* === Logo Spin Animation (optional) === */
+@keyframes spin {
   from {
     transform: rotate(0deg);
   }
@@ -27,16 +32,65 @@
   }
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  a:nth-of-type(2) .logo {
-    animation: logo-spin infinite 20s linear;
-  }
+.logo {
+  height: 6em;
+  margin: 2rem 0;
+  animation: spin 20s linear infinite;
+  filter: drop-shadow(0 0 0.75rem #1976d2aa);
 }
 
+/* === Card Style === */
 .card {
-  padding: 2em;
+  background-color: #fff;
+  border-radius: 12px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+  padding: 2rem;
+  margin-bottom: 2rem;
+  transition: all 0.3s ease;
 }
 
-.read-the-docs {
-  color: #888;
+[data-theme='dark'] .card {
+  background-color: #1e1e1e;
+  color: #f5f5f5;
+}
+
+/* === Button Transitions === */
+button, .MuiButton-root {
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* === Utility Classes === */
+.text-center {
+  text-align: center;
+}
+
+.mb-2 {
+  margin-bottom: 1rem;
+}
+
+.mt-2 {
+  margin-top: 1rem;
+}
+
+.flex {
+  display: flex;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.align-center {
+  align-items: center;
+}
+
+/* === Media Query for Mobile Layouts === */
+@media (max-width: 768px) {
+  .card {
+    padding: 1.5rem;
+  }
+
+  #root {
+    padding: 1rem;
+  }
 }

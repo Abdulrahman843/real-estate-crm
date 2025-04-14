@@ -1,5 +1,3 @@
-// server.js
-
 const express = require('express');
 const cors = require('cors');
 const mongoose = require('mongoose');
@@ -22,10 +20,17 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const propertyRoutes = require('./routes/propertyRoutes');
 const userRoutes = require('./routes/userRoutes');
+const cloudinaryRoutes = require('./routes/cloudinaryRoutes');
+const messageRoutes = require('./routes/messageRoutes');
 
 // Initialize express app and HTTP server
 const app = express();
 const server = http.createServer(app);
+
+// Trust proxy for secure cookies and HTTPS handling
+if (config.server.trustProxy) {
+  app.set('trust proxy', 1);
+}
 
 // Initialize WebSocket
 initializeWebSocket(server);
@@ -42,8 +47,8 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(cookieParser());
-app.use(mongoSanitize()); // Prevent NoSQL injection
-app.use(xss()); // Prevent XSS attacks
+app.use(mongoSanitize());
+app.use(xss());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
@@ -74,22 +79,34 @@ app.use('/api/users', userRoutes);
 app.use('/api/properties', propertyRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/cloudinary', cloudinaryRoutes);
+app.use('/api/messages', messageRoutes);
+
+// Serve static frontend in production
+if (config.server.env === 'production') {
+  const clientBuildPath = path.join(__dirname, '../client/dist');
+  app.use(express.static(clientBuildPath));
+
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientBuildPath, 'index.html'));
+  });
+}
 
 // Global Error Handler
 app.use(errorHandler);
 
 // Start the server
 server.listen(config.server.port, () => {
-  console.log(`✅ Server running in ${config.server.env} mode on port ${config.server.port}`);
-  console.log(`🌐 WebSocket server ready at path ${config.websocket.path}`);
+  console.log(`Server running in ${config.server.env} mode on port ${config.server.port}`);
+  console.log(`WebSocket server ready at path ${config.websocket.path}`);
 });
 
 // Graceful Shutdown
 process.on('SIGTERM', () => {
-  console.log('🔻 Starting graceful shutdown...');
+  console.log('Starting graceful shutdown...');
   server.close(() => {
     mongoose.connection.close(false, () => {
-      console.log('✅ Server shutdown complete');
+      console.log('Server shutdown complete');
       process.exit(0);
     });
   });

@@ -9,35 +9,35 @@ import {
   ListItemText, MenuItem as MenuItemMUI, Drawer,
   List, ListItem, Divider, SpeedDial,
   SpeedDialAction, SpeedDialIcon, Snackbar, Alert,
-  Table, TableBody, TableCell, TableHead, TableRow, 
-  Timeline, TimelineItem, TimelineContent,
-  TimelineDot, TimelineSeparator, TimelineConnector, PieChart, Pie, Cell
+  Table, TableBody, TableCell, TableHead, TableRow
 } from '@mui/material';
 import {
   ExpandMore, FilterList, RestartAlt, Save,
   SaveAlt, MoreVert, FolderOpen, Compare,
   History, Analytics, Share, Template,
-  Star, Recommend, Group, TrendingUp
+  Star, Recommend
 } from '@mui/icons-material';
 import { ResponsiveContainer, BarChart, Bar } from 'recharts';
+
+const defaultFilters = {
+  priceRange: [0, 1000000],
+  bedrooms: '',
+  bathrooms: '',
+  propertyType: '',
+  amenities: [],
+  location: '',
+  area: [0, 5000],
+  yearBuilt: '',
+  status: '',
+  features: []
+};
 
 const PropertyFilters = ({ onApplyFilters }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [expanded, setExpanded] = useState(false);
-  const [filters, setFilters] = useState({
-    priceRange: [0, 1000000],
-    bedrooms: '',
-    bathrooms: '',
-    propertyType: '',
-    amenities: [],
-    location: '',
-    area: [0, 5000],
-    yearBuilt: '',
-    status: '',
-    features: []
-  });
+  const [filters, setFilters] = useState(defaultFilters);
 
   const [presets, setPresets] = useState(JSON.parse(localStorage.getItem('filterPresets') || '{}'));
   const [presetName, setPresetName] = useState('');
@@ -50,7 +50,7 @@ const PropertyFilters = ({ onApplyFilters }) => {
   const [snackbarState, setSnackbarState] = useState({ open: false, message: '' });
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [recommendations, setRecommendations] = useState([]);
-  
+
   const propertyTypes = ['House', 'Apartment', 'Condo', 'Townhouse', 'Land', 'Villa', 'Office'];
   const amenitiesList = [
     'Pool', 'Garage', 'Garden', 'Balcony', 'Security', 'Elevator',
@@ -109,10 +109,7 @@ const PropertyFilters = ({ onApplyFilters }) => {
     }));
   };
 
-  const handleReset = () => setFilters({
-    priceRange: [0, 1000000], bedrooms: '', bathrooms: '', propertyType: '',
-    amenities: [], location: '', area: [0, 5000], yearBuilt: '', status: '', features: []
-  });
+  const handleReset = () => setFilters(defaultFilters);
 
   const handleSavePreset = () => {
     const updatedPresets = { ...presets, [presetName]: filters };
@@ -157,7 +154,7 @@ const PropertyFilters = ({ onApplyFilters }) => {
       rec.push('Properties with gardens are popular in this category');
     setRecommendations(rec);
   };
-
+  
   return (
     <>
       <Accordion expanded={expanded} onChange={() => setExpanded(!expanded)}>

@@ -8,7 +8,7 @@ const config = {
   },
 
   mongodb: {
-    uri: process.env.MONGODB_URI,
+    uri: process.env.MONGO_URI,
     options: {
       maxPoolSize: parseInt(process.env.MONGODB_POOL_SIZE) || 10
     }

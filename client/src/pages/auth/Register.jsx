@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Container, Paper, TextField, Button, Typography, Box, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import {
+  Container, Paper, TextField, Button, Typography, Box,
+  FormControl, InputLabel, Select, MenuItem
+} from '@mui/material';
 import { toast } from 'react-toastify';
-import api from '../../services/api';
+import authService from '../../services/authService'; // ✅ Use centralized service
 
 function Register() {
   const navigate = useNavigate();
@@ -17,15 +20,13 @@ function Register() {
 
   const validateForm = () => {
     const newErrors = {};
-    
-    // Name validation
+
     if (!formData.name.trim()) {
       newErrors.name = 'Name is required';
     } else if (formData.name.length < 2) {
       newErrors.name = 'Name must be at least 2 characters';
     }
 
-    // Email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!formData.email) {
       newErrors.email = 'Email is required';
@@ -33,7 +34,6 @@ function Register() {
       newErrors.email = 'Invalid email format';
     }
 
-    // Password validation
     if (!formData.password) {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 6) {
@@ -45,27 +45,25 @@ function Register() {
   };
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    // Clear error when user starts typing
-    if (errors[e.target.name]) {
-      setErrors({ ...errors, [e.target.name]: '' });
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return;
 
     try {
-      const response = await api.post('/auth/register', formData);
-      localStorage.setItem('token', response.data.token);
-      localStorage.setItem('user', JSON.stringify(response.data));
-      toast.success('Registration successful!');
+      const { user } = await authService.register(formData); // ✅ Central auth call
+
+      toast.success(`Welcome, ${user.name.split(' ')[0]}! Registration successful.`);
       navigate('/');
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Registration failed');
+      toast.error(error.message || 'Registration failed');
     }
   };
 
@@ -84,8 +82,6 @@ function Register() {
               id="name"
               label="Full Name"
               name="name"
-              autoComplete="name"
-              autoFocus
               value={formData.name}
               onChange={handleChange}
               error={!!errors.name}
@@ -98,7 +94,6 @@ function Register() {
               id="email"
               label="Email Address"
               name="email"
-              autoComplete="email"
               value={formData.email}
               onChange={handleChange}
               error={!!errors.email}
@@ -112,7 +107,6 @@ function Register() {
               label="Password"
               type="password"
               id="password"
-              autoComplete="new-password"
               value={formData.password}
               onChange={handleChange}
               error={!!errors.password}
@@ -125,24 +119,19 @@ function Register() {
                 id="role"
                 name="role"
                 value={formData.role}
-                label="Role"
                 onChange={handleChange}
               >
                 <MenuItem value="client">Client</MenuItem>
                 <MenuItem value="agent">Agent</MenuItem>
               </Select>
             </FormControl>
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              sx={{ mt: 3, mb: 2 }}
-            >
+
+            <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }}>
               Register
             </Button>
+
             <Typography align="center">
-              Already have an account?{' '}
-              <Link to="/login">Sign In</Link>
+              Already have an account? <Link to="/login">Sign In</Link>
             </Typography>
           </Box>
         </Paper>

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Grid, Card, CardContent, Typography, Box } from '@mui/material';
 import { Person, House, Assignment, TrendingUp } from '@mui/icons-material';
 import api from '../../services/api';
+import useAuth from '../../contexts/useAuth';
 
 const AdminDashboard = () => {
   const [stats, setStats] = useState({
@@ -10,6 +12,15 @@ const AdminDashboard = () => {
     activeListings: 0,
     totalTransactions: 0
   });
+  const [loading, setLoading] = useState(true);
+  const { isAdmin } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!isAdmin()) {
+      navigate('/');
+    }
+  }, [isAdmin, navigate]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -18,6 +29,8 @@ const AdminDashboard = () => {
         setStats(response.data);
       } catch (error) {
         console.error('Error fetching admin stats:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -32,37 +45,41 @@ const AdminDashboard = () => {
   ];
 
   return (
-    <Box>
+    <Box sx={{ p: { xs: 2, sm: 3, md: 4 } }}>
       <Typography variant="h4" gutterBottom>
         Admin Dashboard
       </Typography>
-      <Grid container spacing={3}>
-        {statCards.map((card) => (
-          <Grid item xs={12} sm={6} md={3} key={card.title}>
-            <Card>
-              <CardContent>
-                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                  <Box sx={{ 
-                    backgroundColor: card.color,
-                    borderRadius: '50%',
-                    p: 1,
-                    mr: 2,
-                    color: 'white'
-                  }}>
-                    {card.icon}
+      {loading ? (
+        <Typography>Loading dashboard...</Typography>
+      ) : (
+        <Grid container spacing={3}>
+          {statCards.map((card) => (
+            <Grid item xs={12} sm={6} md={3} key={card.title}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Box
+                      sx={{
+                        backgroundColor: card.color,
+                        borderRadius: '50%',
+                        p: 1,
+                        mr: 2,
+                        color: 'white'
+                      }}
+                    >
+                      {card.icon}
+                    </Box>
+                    <Typography color="textSecondary" variant="h6">
+                      {card.title}
+                    </Typography>
                   </Box>
-                  <Typography color="textSecondary" variant="h6">
-                    {card.title}
-                  </Typography>
-                </Box>
-                <Typography variant="h4">
-                  {card.value}
-                </Typography>
-              </CardContent>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+                  <Typography variant="h4">{card.value}</Typography>
+                </CardContent>
+              </Card>
+            </Grid>
+          ))}
+        </Grid>
+      )}
     </Box>
   );
 };

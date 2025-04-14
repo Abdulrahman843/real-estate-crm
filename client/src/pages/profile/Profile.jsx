@@ -11,7 +11,7 @@ import {
   Alert,
   CircularProgress
 } from '@mui/material';
-import useAuth from '../../hooks/useAuth';
+import useAuth from '../../contexts/useAuth';
 import api from '../../services/api';
 
 const Profile = () => {
@@ -36,19 +36,30 @@ const Profile = () => {
 
   useEffect(() => {
     if (user) {
-      setFormData({
-        ...formData,
-        ...user,
-        ...user.profile
-      });
+      setFormData((prev) => ({
+        ...prev,
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.profile?.phone || '',
+        address: user.profile?.address || '',
+        bio: user.profile?.bio || '',
+        company: user.profile?.company || '',
+        website: user.profile?.website || '',
+        socialMedia: {
+          facebook: user.profile?.socialMedia?.facebook || '',
+          twitter: user.profile?.socialMedia?.twitter || '',
+          linkedin: user.profile?.socialMedia?.linkedin || ''
+        }
+      }));
     }
   }, [user]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
     if (name.startsWith('socialMedia.')) {
       const social = name.split('.')[1];
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         socialMedia: {
           ...prev.socialMedia,
@@ -56,7 +67,7 @@ const Profile = () => {
         }
       }));
     } else {
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
         [name]: value
       }));
@@ -70,7 +81,16 @@ const Profile = () => {
     setSuccess(false);
 
     try {
-      await api.put('/users/profile', formData);
+      await api.put('/users/profile', {
+        name: formData.name,
+        phone: formData.phone,
+        address: formData.address,
+        bio: formData.bio,
+        company: formData.company,
+        website: formData.website,
+        socialMedia: formData.socialMedia
+      });
+
       setSuccess(true);
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to update profile');
@@ -126,9 +146,8 @@ const Profile = () => {
                 fullWidth
                 label="Email"
                 name="email"
-                type="email"
                 value={formData.email}
-                onChange={handleChange}
+                disabled
               />
             </Grid>
             <Grid item xs={12} sm={6}>
@@ -136,7 +155,7 @@ const Profile = () => {
                 fullWidth
                 label="Phone"
                 name="phone"
-                value={formData.phone || ''}
+                value={formData.phone}
                 onChange={handleChange}
               />
             </Grid>
@@ -145,7 +164,7 @@ const Profile = () => {
                 fullWidth
                 label="Address"
                 name="address"
-                value={formData.address || ''}
+                value={formData.address}
                 onChange={handleChange}
               />
             </Grid>
@@ -156,7 +175,7 @@ const Profile = () => {
                 name="bio"
                 multiline
                 rows={4}
-                value={formData.bio || ''}
+                value={formData.bio}
                 onChange={handleChange}
               />
             </Grid>
@@ -165,7 +184,7 @@ const Profile = () => {
                 fullWidth
                 label="Company"
                 name="company"
-                value={formData.company || ''}
+                value={formData.company}
                 onChange={handleChange}
               />
             </Grid>
@@ -174,7 +193,7 @@ const Profile = () => {
                 fullWidth
                 label="Website"
                 name="website"
-                value={formData.website || ''}
+                value={formData.website}
                 onChange={handleChange}
               />
             </Grid>
@@ -183,7 +202,7 @@ const Profile = () => {
                 fullWidth
                 label="Facebook"
                 name="socialMedia.facebook"
-                value={formData.socialMedia?.facebook || ''}
+                value={formData.socialMedia.facebook}
                 onChange={handleChange}
               />
             </Grid>
@@ -192,7 +211,7 @@ const Profile = () => {
                 fullWidth
                 label="Twitter"
                 name="socialMedia.twitter"
-                value={formData.socialMedia?.twitter || ''}
+                value={formData.socialMedia.twitter}
                 onChange={handleChange}
               />
             </Grid>
@@ -201,7 +220,7 @@ const Profile = () => {
                 fullWidth
                 label="LinkedIn"
                 name="socialMedia.linkedin"
-                value={formData.socialMedia?.linkedin || ''}
+                value={formData.socialMedia.linkedin}
                 onChange={handleChange}
               />
             </Grid>

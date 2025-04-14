@@ -2,24 +2,24 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
 /**
- * Validates if the uploaded image meets type and size requirements.
- * @param {File} file - The image file to validate.
- * @throws Will throw an error if the file is invalid.
+ * ✅ Validate image type and size
+ * @param {File} file
+ * @throws Error if invalid
  */
 export const validateImage = (file) => {
-  if (!ALLOWED_TYPES.includes(file.type)) {
-    throw new Error('Invalid file type. Only JPG, PNG, and WebP images are allowed.');
+  if (!file || !file.type || !ALLOWED_TYPES.includes(file.type)) {
+    throw new Error('Invalid file type. Only JPG, PNG, and WebP are allowed.');
   }
   if (file.size > MAX_FILE_SIZE) {
-    throw new Error('File size too large. Maximum size is 5MB.');
+    throw new Error('File size too large. Max is 5MB.');
   }
   return true;
 };
 
 /**
- * Compresses an image to a maximum width/height and quality.
- * @param {File} file - The image file to compress.
- * @returns {Promise<File>} - A compressed image file.
+ * ✅ Compress image (optional before upload)
+ * @param {File} file
+ * @returns {Promise<File>}
  */
 export const compressImage = async (file) => {
   return new Promise((resolve, reject) => {
@@ -35,8 +35,7 @@ export const compressImage = async (file) => {
 
         const maxWidth = 1920;
         const maxHeight = 1080;
-        let width = img.width;
-        let height = img.height;
+        let { width, height } = img;
 
         if (width > height && width > maxWidth) {
           height = Math.round((height * maxWidth) / width);
@@ -52,35 +51,41 @@ export const compressImage = async (file) => {
 
         canvas.toBlob(
           (blob) => {
-            resolve(new File([blob], file.name, { type: file.type }));
+            if (blob) {
+              resolve(new File([blob], file.name, { type: file.type }));
+            } else {
+              reject(new Error('Failed to compress image.'));
+            }
           },
           file.type,
           0.8
         );
       };
+
+      img.onerror = () => reject(new Error('Failed to load image for compression.'));
     };
 
-    reader.onerror = () => reject(new Error('Failed to read image'));
+    reader.onerror = () => reject(new Error('Failed to read image file.'));
     reader.readAsDataURL(file);
   });
 };
 
 /**
- * Processes multiple images with validation and compression.
- * @param {FileList} files - Array of files to process.
- * @param {Function} [onProgress] - Optional callback for upload progress.
- * @returns {Promise<File[]>} - Array of processed image files.
+ * ✅ Process image list with validation + compression
+ * @param {FileList|File[]} files
+ * @param {Function} [onProgress]
+ * @returns {Promise<File[]>}
  */
 export const processImages = async (files, onProgress) => {
-  const processedFiles = [];
+  const processed = [];
   const total = files.length;
 
   for (let i = 0; i < total; i++) {
     try {
-      validateImage(files[i]);
-      const compressed = await compressImage(files[i]);
-      processedFiles.push(compressed);
-
+      const file = files[i];
+      validateImage(file);
+      const compressed = await compressImage(file);
+      processed.push(compressed);
       if (onProgress) {
         onProgress(((i + 1) / total) * 100);
       }
@@ -89,28 +94,50 @@ export const processImages = async (files, onProgress) => {
     }
   }
 
-  return processedFiles;
+  return processed;
 };
 
 /**
- * Creates an object URL for image preview.
- * @param {File} file - Image file.
- * @returns {string} - Object URL for the image.
+ * ✅ Preview object URL
+ * @param {File} file
+ * @returns {string}
  */
 export const createImagePreview = (file) => {
   try {
     return URL.createObjectURL(file);
   } catch {
-    throw new Error('Failed to create image preview');
+    throw new Error('Failed to generate image preview.');
   }
 };
 
 /**
- * Cleans up object URLs to prevent memory leaks.
- * @param {string} url - Object URL to revoke.
+ * ✅ Revoke object URL (cleanup)
+ * @param {string} url
  */
 export const revokeImagePreview = (url) => {
   if (url && url.startsWith('blob:')) {
     URL.revokeObjectURL(url);
   }
+};
+
+/**
+ * ☁️ Upload to Cloudinary (optional)
+ * @param {File} file
+ * @returns {Promise<Object>} { secure_url, public_id, etc. }
+ */
+export const uploadToCloudinary = async (file) => {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', 'YOUR_UPLOAD_PRESET'); // change this
+  const res = await fetch('https://api.cloudinary.com/v1_1/YOUR_CLOUD_NAME/image/upload', {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const error = await res.json();
+    throw new Error(error.error?.message || 'Cloudinary upload failed');
+  }
+
+  return await res.json(); // contains secure_url, public_id, etc.
 };

@@ -1,4 +1,3 @@
-// src/api.js
 import axios from 'axios';
 import { toast } from 'react-toastify';
 
@@ -10,6 +9,7 @@ const api = axios.create({
   }
 });
 
+// Request Interceptor
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -30,6 +30,7 @@ api.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
+// Response Interceptor
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -47,6 +48,7 @@ api.interceptors.response.use(
       });
     }
 
+    // Auto logout on 401 errors
     if (status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -55,6 +57,7 @@ api.interceptors.response.use(
       }
     }
 
+    // Display error toast for all client/server errors
     if (status >= 400) {
       toast.error(message);
     }

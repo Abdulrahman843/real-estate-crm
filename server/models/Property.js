@@ -18,6 +18,7 @@ const propertySchema = new mongoose.Schema({
         city: { type: String, required: true },
         state: { type: String, required: true },
         zipCode: { type: String, required: true },
+        country: { type: String, required: true },
         coordinates: {
             lat: { type: Number },
             lng: { type: Number }

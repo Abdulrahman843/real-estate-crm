@@ -1,28 +1,32 @@
 import api from './api';
 
-// Test API endpoints
+/**
+ * Test backend API endpoints.
+ */
 const testEndpoints = async () => {
-  try {
-    console.log('Testing API endpoints...');
-    
-    // Test notifications endpoint
-    const notificationsResponse = await api.get('/notifications');
-    console.log('Notifications:', notificationsResponse.data);
-    
-    // Test dashboard endpoint
-    const dashboardResponse = await api.get('/dashboard');
-    console.log('Dashboard:', dashboardResponse.data);
-    
-  } catch (error) {
-    console.error('Test failed:', {
-      endpoint: error.config?.url,
-      status: error.response?.status,
-      message: error.response?.data?.message
-    });
+  console.log('%c[API TEST] Running backend API tests...', 'color: teal; font-weight: bold');
+
+  const endpoints = [
+    { name: 'Notifications', url: '/notifications' },
+    { name: 'Dashboard Stats', url: '/dashboard' },
+    { name: 'User Profile', url: '/users/profile' }
+  ];
+
+  for (const { name, url } of endpoints) {
+    try {
+      const res = await api.get(url);
+      console.log(`✅ ${name} [${url}]`, res.data);
+    } catch (error) {
+      console.error(`❌ ${name} [${url}] FAILED`, {
+        status: error.response?.status,
+        message: error.response?.data?.message,
+        url: error.config?.url
+      });
+    }
   }
 };
 
-// Run tests when in development
+// Auto-run tests in development mode
 if (import.meta.env.DEV) {
   testEndpoints();
 }
