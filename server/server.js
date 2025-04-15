@@ -35,24 +35,40 @@ if (config.server.trustProxy) {
 // Initialize WebSocket
 initializeWebSocket(server);
 
-// Middleware for security and performance
+// ✅ ALLOWED ORIGINS (add more if needed)
+const allowedOrigins = [
+  'https://real-estate-crm-e2za.vercel.app',
+  'https://real-estate-crm-mu.vercel.app'
+];
+
+// ✅ Dynamic CORS middleware
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || config.cors.origin.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`Not allowed by CORS: ${origin}`));
+    }
+  },
+  credentials: config.cors.credentials,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+
+// Security middleware
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
   crossOriginEmbedderPolicy: false
 }));
 app.use(compression());
-app.use(cors({
-  ...config.cors,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
 app.use(cookieParser());
 app.use(mongoSanitize());
 app.use(xss());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Logging requests
+// Logging
 if (config.logging.enableRequestLogging) {
   app.use(morgan(config.logging.format));
 }
@@ -64,13 +80,6 @@ mongoose.connect(config.mongodb.uri, config.mongodb.options)
     console.error('MongoDB connection error:', err);
     process.exit(1);
   });
-
-// Set response headers
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Credentials', true);
-  res.header('Access-Control-Expose-Headers', 'Content-Range');
-  next();
-});
 
 // Routes
 app.use('/api/test', testRoutes);
@@ -92,16 +101,16 @@ if (config.server.env === 'production') {
   });
 }
 
-// Global Error Handler
+// Error Handler
 app.use(errorHandler);
 
-// Start the server
+// Start server
 server.listen(config.server.port, () => {
   console.log(`Server running in ${config.server.env} mode on port ${config.server.port}`);
   console.log(`WebSocket server ready at path ${config.websocket.path}`);
 });
 
-// Graceful Shutdown
+// Graceful shutdown
 process.on('SIGTERM', () => {
   console.log('Starting graceful shutdown...');
   server.close(() => {

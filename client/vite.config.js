@@ -1,7 +1,6 @@
 /* eslint-env node */
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import { visualizer } from 'rollup-plugin-visualizer';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(({ mode }) => {
@@ -40,64 +39,55 @@ export default defineConfig(({ mode }) => {
           ]
         },
         workbox: {
-          globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+          globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
           navigateFallback: 'index.html',
-          cleanupOutdatedCaches: true, 
+          cleanupOutdatedCaches: true,
+          skipWaiting: true,
+          clientsClaim: true, 
           runtimeCaching: [
             {
-              urlPattern: /^https:\/\/api\..*/i, 
-              handler: 'NetworkFirst',
-              options: {
-                cacheName: 'api-cache',
-                expiration: {
-                  maxEntries: 100,
-                  maxAgeSeconds: 60 * 60 * 24
-                },
-                cacheableResponse: {
-                  statuses: [0, 200]
-                }
-              }
+              urlPattern: /^https?:\/\/.*\.(js|css|json)/i, 
+              handler: 'NetworkFirst'
+            },
+            {
+              urlPattern: /^https?:\/\/.*\.(png|jpg|jpeg|gif|svg|ico)/i,
+              handler: 'CacheFirst'
             }
           ]
-        },
-        devOptions: {
-          enabled: true
         }
-      }),
-
-      mode === 'analyze' && visualizer({
-        open: true,
-        gzipSize: true,
-        brotliSize: true,
-        filename: 'dist/stats.html'
       })
     ].filter(Boolean),
-
     build: {
       target: 'es2015',
       sourcemap: !isProd,
       minify: 'terser',
-      cssCodeSplit: true,
-      chunkSizeWarningLimit: 1000,
+      cssCodeSplit: false,
+      chunkSizeWarningLimit: 2000,
       rollupOptions: {
         output: {
-          manualChunks: {
-            vendor: ['react', 'react-dom'],
-            router: ['react-router-dom'],
-            mui: ['@mui/material', '@mui/icons-material'],
-            utils: ['axios', 'formik', 'yup'],
-            redux: ['@reduxjs/toolkit', 'react-redux']
-          },
-          assetFileNames: (assetInfo) => {
-            if (/\.(gif|jpe?g|png|svg)$/.test(assetInfo.name ?? '')) {
-              return 'assets/images/[name]-[hash][extname]';
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('@mui')) {
+                return 'mui';
+              }
+              if (id.includes('react')) {
+                return 'react';
+              }
+              return 'vendor';
             }
-            return 'assets/[name]-[hash][extname]';
-          }
+          },
+          chunkFileNames: 'assets/[name]-[hash].js',
+          entryFileNames: 'assets/[name]-[hash].js',
+          assetFileNames: 'assets/[name]-[hash][extname]'
+        }
+      },
+      terserOptions: {
+        compress: {
+          drop_console: isProd,
+          drop_debugger: isProd
         }
       }
     },
-
     server: {
       port: 5173,
       proxy: {
