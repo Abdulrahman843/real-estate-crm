@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
   const isProd = mode === 'production';
 
   return {
-    base: '/', // changed from './' to '/' for Vercel compatibility
+    base: './', 
     plugins: [
       react(),
 
