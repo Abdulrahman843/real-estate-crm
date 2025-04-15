@@ -2,7 +2,6 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { visualizer } from 'rollup-plugin-visualizer';
-// import viteCompression from 'vite-plugin-compression';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(({ mode }) => {
@@ -10,17 +9,17 @@ export default defineConfig(({ mode }) => {
   const isProd = mode === 'production';
 
   return {
-    base: '/',
+    base: '/', // changed from './' to '/' for Vercel compatibility
     plugins: [
       react(),
-      // ❌ DISABLED COMPRESSION ON VERCEL
-      // isProd && !process.env.VERCEL && viteCompression({ ... }),
 
+      // ✅ PWA plugin with navigateFallback to fix old service worker caching
       VitePWA({
         registerType: 'autoUpdate',
         manifest: {
           name: 'Real Estate CRM',
           short_name: 'RealCRM',
+          version: '2.0.0', // optional: helps trigger update on clients
           theme_color: '#ffffff',
           background_color: '#ffffff',
           display: 'standalone',
@@ -42,6 +41,7 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+          navigateFallback: '/index.html', // ✅ ensures fallback to main route
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/api\.yourapp\.com\/.*/i,
@@ -60,6 +60,7 @@ export default defineConfig(({ mode }) => {
           enabled: true
         }
       }),
+
       mode === 'analyze' && visualizer({
         open: true,
         gzipSize: true,
@@ -67,6 +68,7 @@ export default defineConfig(({ mode }) => {
         filename: 'dist/stats.html'
       })
     ].filter(Boolean),
+
     build: {
       target: 'es2015',
       sourcemap: !isProd,
@@ -92,6 +94,7 @@ export default defineConfig(({ mode }) => {
         }
       }
     },
+
     server: {
       port: 5173,
       proxy: {
@@ -106,6 +109,7 @@ export default defineConfig(({ mode }) => {
         }
       }
     },
+
     preview: {
       port: 4173,
       host: true
