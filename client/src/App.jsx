@@ -28,6 +28,9 @@ import NotFound from './pages/NotFound';
 import Forbidden from './pages/Forbidden';
 import Unauthorized from './pages/Unauthorized';
 
+// App.jsx
+// Added to trigger Vercel redeploy
+
 function App() {
   const { user } = useAuth();
 
