@@ -4,17 +4,18 @@ import react from '@vitejs/plugin-react';
 import { visualizer } from 'rollup-plugin-visualizer';
 import viteCompression from 'vite-plugin-compression';
 import { VitePWA } from 'vite-plugin-pwa';
- 
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const isProd = mode === 'production';
-  
+
   return {
     base: './',
     plugins: [
       react(),
-      viteCompression({
-        algorithm: 'brotli',
+      // 👉 Only enable compression plugin in local production builds
+      isProd && process.env.VERCEL !== '1' && viteCompression({
+        algorithm: 'brotliCompress',
         ext: '.br',
         threshold: 10240 // Only compress files > 10kb
       }),
