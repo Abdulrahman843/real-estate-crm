@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useDropzone } from 'react-dropzone';
 import {
-  Box, Grid, Typography, IconButton, Button, CircularProgress
+  Box, Grid, Typography, IconButton, Button, CircularProgress, Chip
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { compressImage, createImagePreview, revokeImagePreview, validateImage } from '../../utils/imageUpload';
@@ -10,8 +10,7 @@ const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${cloudName}/upload`;
 
-// eslint-disable-next-line no-unused-vars
-const ImageUploader = ({ propertyId, onUploadSuccess }) => {
+const ImageUploader = ({ onUploadSuccess }) => {
   const [images, setImages] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [uploadedImages, setUploadedImages] = useState([]);
@@ -47,17 +46,19 @@ const ImageUploader = ({ propertyId, onUploadSuccess }) => {
 
   const uploadImages = async () => {
     setUploading(true);
-    const formData = new FormData();
     try {
       const uploadResults = [];
-      for (let img of images) {
-        formData.set('file', img.file);
-        formData.set('upload_preset', uploadPreset);
-        formData.set('folder', 'real-estate-crm');
+
+      for (let i = 0; i < images.length; i++) {
+        const img = images[i];
+        const formData = new FormData();
+        formData.append('file', img.file);
+        formData.append('upload_preset', uploadPreset);
+        formData.append('folder', 'real-estate-crm');
 
         const response = await fetch(CLOUDINARY_UPLOAD_URL, {
           method: 'POST',
-          body: formData
+          body: formData,
         });
 
         if (!response.ok) throw new Error('Upload failed');
@@ -66,14 +67,15 @@ const ImageUploader = ({ propertyId, onUploadSuccess }) => {
         uploadResults.push({
           url: data.secure_url,
           public_id: data.public_id,
-          thumbnail: data.secure_url.replace('/upload/', '/upload/w_300,h_200,c_fill/')
+          thumbnail: data.secure_url.replace('/upload/', '/upload/w_300,h_200,c_fill/'),
+          label: i === 0 ? 'cover' : 'gallery'
         });
       }
 
       setUploadedImages(uploadResults);
       setImages([]);
       if (onUploadSuccess) onUploadSuccess(uploadResults);
-      alert('Upload successful');
+      alert('Images uploaded successfully');
     } catch (err) {
       console.error(err);
       alert(err.message || 'Image upload failed');
@@ -113,6 +115,12 @@ const ImageUploader = ({ propertyId, onUploadSuccess }) => {
               >
                 <DeleteIcon fontSize="small" />
               </IconButton>
+              <Chip
+                label={index === 0 ? 'Cover' : 'Gallery'}
+                size="small"
+                color={index === 0 ? 'primary' : 'default'}
+                sx={{ mt: 1 }}
+              />
             </Box>
           </Grid>
         ))}
@@ -141,6 +149,9 @@ const ImageUploader = ({ propertyId, onUploadSuccess }) => {
                   height={100}
                   style={{ objectFit: 'cover' }}
                 />
+                <Typography variant="caption" display="block" align="center">
+                  {img.label}
+                </Typography>
               </Grid>
             ))}
           </Grid>

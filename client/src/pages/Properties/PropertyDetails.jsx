@@ -10,7 +10,8 @@ import {
   Chip,
   Button,
   ImageList,
-  ImageListItem
+  ImageListItem,
+  Stack
 } from '@mui/material';
 import PropertyMap from '../../components/properties/PropertyMap';
 import { propertyService } from '../../services/propertyService';
@@ -50,7 +51,7 @@ const PropertyDetails = () => {
     );
   }
 
-  const { title, description, price, type, location, features, images = [] } = property;
+  const { title, description, price, type, location, features, images = [], status } = property;
   const coverImage = images.find(img => img.label === 'cover');
   const galleryImages = images.filter(img => img.label !== 'cover');
 
@@ -61,16 +62,19 @@ const PropertyDetails = () => {
           <Paper sx={{ p: 2 }}>
             <Typography variant="h4" gutterBottom>{title}</Typography>
             <Typography variant="h5" color="primary" gutterBottom>£{price.toLocaleString()}</Typography>
+            <Chip label={status?.toUpperCase() || 'AVAILABLE'} color="success" sx={{ mb: 1 }} />
             <Typography variant="body1" paragraph>{description}</Typography>
             <Divider sx={{ my: 2 }} />
 
-            <Typography variant="subtitle1">Type: {type}</Typography>
-            <Typography variant="subtitle1">
-              Location: {location?.address}, {location?.city}, {location?.state}, {location?.zipCode}
-            </Typography>
-            <Typography variant="subtitle1">Bedrooms: {features?.bedrooms || 0}</Typography>
-            <Typography variant="subtitle1">Bathrooms: {features?.bathrooms || 0}</Typography>
-            <Typography variant="subtitle1">Square Feet: {features?.squareFeet || 'N/A'}</Typography>
+            <Stack spacing={1}>
+              <Typography variant="subtitle1">Type: {type}</Typography>
+              <Typography variant="subtitle1">
+                Location: {location?.address}, {location?.city}, {location?.state}, {location?.zipCode}
+              </Typography>
+              <Typography variant="subtitle1">Bedrooms: {features?.bedrooms || 0}</Typography>
+              <Typography variant="subtitle1">Bathrooms: {features?.bathrooms || 0}</Typography>
+              <Typography variant="subtitle1">Square Feet: {features?.squareFeet || 'N/A'}</Typography>
+            </Stack>
 
             <Box sx={{ mt: 2 }}>
               <Typography variant="subtitle2">Amenities:</Typography>

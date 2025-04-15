@@ -1,7 +1,7 @@
 // real-estate-crm/client/src/pages/Properties/AddProperty.jsx
 
 import React from 'react';
-import { Formik, Form, Field, FieldArray } from 'formik';
+import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 import {
   Box, Button, TextField, Grid, Typography, Chip, Stack
@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { propertyService } from '../../services/propertyService';
 import { toast } from 'react-toastify';
 import ImageUploader from './ImageUploader';
+import DraggableMap from '../../components/maps/DraggableMap';
 
 const amenitiesOptions = [
   'Pool', 'Garage', 'Garden', 'Balcony', 'Security System',
@@ -27,14 +28,15 @@ const validationSchema = Yup.object({
     city: Yup.string().required('City is required'),
     state: Yup.string().required('State is required'),
     zipCode: Yup.string().required('ZIP Code is required'),
-    country: Yup.string().required('Country is required'),
+    country: Yup.string().required('Country is required')
   }),
   features: Yup.object().shape({
     bedrooms: Yup.number().required('Bedrooms are required'),
     bathrooms: Yup.number().required('Bathrooms are required'),
     squareFeet: Yup.number().required('Area is required'),
     amenities: Yup.array().of(Yup.string())
-  })
+  }),
+  images: Yup.array().min(1, 'At least one image is required')
 });
 
 const AddProperty = () => {
@@ -59,10 +61,24 @@ const AddProperty = () => {
       amenities: []
     },
     status: 'available',
+    images: []
   };
 
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
+      // Fallback to Street View image if no cover image uploaded
+      if (values.images.length === 0) {
+        const { address, city, state, zipCode, country } = values.location;
+        const fullAddress = `${address}, ${city}, ${state}, ${zipCode}, ${country}`;
+        const encoded = encodeURIComponent(fullAddress);
+        const streetViewUrl = `https://maps.googleapis.com/maps/api/streetview?size=800x600&location=${encoded}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`;
+
+        values.images.push({
+          url: streetViewUrl,
+          label: 'cover'
+        });
+      }
+
       await propertyService.createProperty(values);
       toast.success('Property created successfully');
       navigate('/properties');
@@ -82,7 +98,7 @@ const AddProperty = () => {
         validationSchema={validationSchema}
         onSubmit={handleSubmit}
       >
-        {({ values, isSubmitting, handleChange, errors, touched }) => (
+        {({ values, isSubmitting, handleChange, errors, touched, setFieldValue }) => (
           <Form noValidate>
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
@@ -129,7 +145,6 @@ const AddProperty = () => {
                   onChange={handleChange}
                 />
               </Grid>
-
               <Grid item xs={12} sm={4}>
                 <TextField
                   name="features.squareFeet"
@@ -139,6 +154,10 @@ const AddProperty = () => {
                   value={values.features.squareFeet}
                   onChange={handleChange}
                 />
+              </Grid>
+
+              <Grid item xs={12}>
+                <DraggableMap setFieldValue={setFieldValue} />
               </Grid>
 
               <Grid item xs={12} sm={6}>
@@ -159,7 +178,6 @@ const AddProperty = () => {
                   onChange={handleChange}
                 />
               </Grid>
-
               <Grid item xs={12} sm={4}>
                 <TextField
                   name="location.state"
@@ -223,12 +241,7 @@ const AddProperty = () => {
                         const updated = exists
                           ? values.features.amenities.filter((a) => a !== amenity)
                           : [...values.features.amenities, amenity];
-                        handleChange({
-                          target: {
-                            name: 'features.amenities',
-                            value: updated
-                          }
-                        });
+                        setFieldValue('features.amenities', updated);
                       }}
                     />
                   ))}
@@ -236,7 +249,7 @@ const AddProperty = () => {
               </Grid>
 
               <Grid item xs={12}>
-                <ImageUploader />
+                <ImageUploader onUploadSuccess={(uploaded) => setFieldValue('images', uploaded)} />
               </Grid>
 
               <Grid item xs={12} display="flex" gap={2}>

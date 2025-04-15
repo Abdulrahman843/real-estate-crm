@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Typography, Box, Paper, CircularProgress } from '@mui/material';
+import {
+  Typography, Box, Paper, CircularProgress, Snackbar, Alert
+} from '@mui/material';
 import PropertyForm from './PropertyForm';
 import { propertyService } from '../../services/propertyService';
 
@@ -12,6 +14,7 @@ const EditProperty = () => {
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
   useEffect(() => {
     const fetchProperty = async () => {
@@ -31,9 +34,10 @@ const EditProperty = () => {
   const handleSubmit = async (formData) => {
     try {
       await propertyService.updateProperty(id, formData);
-      navigate(`/properties/${id}`);
+      setSnackbar({ open: true, message: 'Property updated successfully!', severity: 'success' });
+      setTimeout(() => navigate(`/properties/${id}`), 1500);
     } catch {
-      setError('Failed to update property');
+      setSnackbar({ open: true, message: 'Failed to update property', severity: 'error' });
     }
   };
 
@@ -57,8 +61,17 @@ const EditProperty = () => {
     <Box sx={{ p: 3 }}>
       <Typography variant="h5" gutterBottom>Edit Property</Typography>
       <Paper sx={{ p: 3 }}>
-        <PropertyForm initialValues={property} onSubmit={handleSubmit} />
+        <PropertyForm initialValues={property} onSubmit={handleSubmit} isEdit />
       </Paper>
+
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={4000}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity={snackbar.severity} sx={{ width: '100%' }}>{snackbar.message}</Alert>
+      </Snackbar>
     </Box>
   );
 };

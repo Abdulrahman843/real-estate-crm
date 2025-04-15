@@ -1,3 +1,4 @@
+// client/src/components/properties/PropertyFilters.jsx
 import { useState, useEffect } from 'react';
 import {
   Box, Paper, TextField, Slider, FormControl,
@@ -32,14 +33,56 @@ const defaultFilters = {
   features: []
 };
 
+const propertyTypes = ['House', 'Apartment', 'Condo', 'Townhouse', 'Land', 'Villa', 'Office'];
+const amenitiesList = [
+  'Pool', 'Garage', 'Garden', 'Balcony', 'Security', 'Elevator',
+  'Gym', 'Parking', 'Storage', 'Pet Friendly', 'Furnished'
+];
+const statusOptions = ['For Sale', 'For Rent', 'Sold', 'Pending'];
+const featuresList = [
+  'Waterfront', 'Mountain View', 'Beach Access', 'Smart Home',
+  'Solar Panels', 'Wine Cellar', 'Home Theater'
+];
+
+const filterTemplates = {
+  'Luxury Homes': {
+    priceRange: [750000, 1000000],
+    propertyType: 'House',
+    amenities: ['Pool', 'Smart Home', 'Security'],
+    features: ['Waterfront', 'Wine Cellar', 'Home Theater'],
+    status: 'For Sale'
+  },
+  'First-time Buyers': {
+    priceRange: [200000, 400000],
+    propertyType: 'Apartment',
+    bedrooms: 2,
+    bathrooms: 1,
+    status: 'For Sale'
+  },
+  'Investment Property': {
+    priceRange: [300000, 600000],
+    propertyType: 'Condo',
+    status: 'For Sale',
+    features: ['Pet Friendly'],
+    amenities: ['Parking', 'Security']
+  }
+};
+
+const formatPrice = (value) => `$${value.toLocaleString()}`;
+
 const PropertyFilters = ({ onApplyFilters }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
   const [expanded, setExpanded] = useState(false);
   const [filters, setFilters] = useState(defaultFilters);
-
-  const [presets, setPresets] = useState(JSON.parse(localStorage.getItem('filterPresets') || '{}'));
+  const [presets, setPresets] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('filterPresets')) || {};
+    } catch {
+      return {};
+    }
+  });
   const [presetName, setPresetName] = useState('');
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [presetsMenuAnchor, setPresetsMenuAnchor] = useState(null);
@@ -50,43 +93,6 @@ const PropertyFilters = ({ onApplyFilters }) => {
   const [snackbarState, setSnackbarState] = useState({ open: false, message: '' });
   const [templateDialogOpen, setTemplateDialogOpen] = useState(false);
   const [recommendations, setRecommendations] = useState([]);
-
-  const propertyTypes = ['House', 'Apartment', 'Condo', 'Townhouse', 'Land', 'Villa', 'Office'];
-  const amenitiesList = [
-    'Pool', 'Garage', 'Garden', 'Balcony', 'Security', 'Elevator',
-    'Gym', 'Parking', 'Storage', 'Pet Friendly', 'Furnished'
-  ];
-  const statusOptions = ['For Sale', 'For Rent', 'Sold', 'Pending'];
-  const featuresList = [
-    'Waterfront', 'Mountain View', 'Beach Access', 'Smart Home',
-    'Solar Panels', 'Wine Cellar', 'Home Theater'
-  ];
-
-  const filterTemplates = {
-    'Luxury Homes': {
-      priceRange: [750000, 1000000],
-      propertyType: 'House',
-      amenities: ['Pool', 'Smart Home', 'Security'],
-      features: ['Waterfront', 'Wine Cellar', 'Home Theater'],
-      status: 'For Sale'
-    },
-    'First-time Buyers': {
-      priceRange: [200000, 400000],
-      propertyType: 'Apartment',
-      bedrooms: 2,
-      bathrooms: 1,
-      status: 'For Sale'
-    },
-    'Investment Property': {
-      priceRange: [300000, 600000],
-      propertyType: 'Condo',
-      status: 'For Sale',
-      features: ['Pet Friendly'],
-      amenities: ['Parking', 'Security']
-    }
-  };
-
-  const formatPrice = (value) => `$${value.toLocaleString()}`;
 
   useEffect(() => {
     const savedFilters = localStorage.getItem('propertyFilters');
@@ -105,12 +111,13 @@ const PropertyFilters = ({ onApplyFilters }) => {
   const toggleFilterItem = (key, item) => {
     setFilters(prev => ({
       ...prev,
-      [key]: prev[key].includes(item) ? prev[key].filter(i => i !== item) : [...prev[key], item]
+      [key]: prev[key].includes(item)
+        ? prev[key].filter(i => i !== item)
+        : [...prev[key], item]
     }));
   };
 
   const handleReset = () => setFilters(defaultFilters);
-
   const handleSavePreset = () => {
     const updatedPresets = { ...presets, [presetName]: filters };
     setPresets(updatedPresets);
@@ -130,14 +137,18 @@ const PropertyFilters = ({ onApplyFilters }) => {
     setCompareDialogOpen(true);
   };
 
-  const handleExportFilters = () => {
-    navigator.clipboard.writeText(btoa(JSON.stringify(filters)));
-    setSnackbarState({ open: true, message: 'Filter configuration copied to clipboard' });
+  const handleExportFilters = async () => {
+    try {
+      await navigator.clipboard.writeText(btoa(JSON.stringify(filters)));
+      setSnackbarState({ open: true, message: 'Filter configuration copied to clipboard' });
+    } catch {
+      setSnackbarState({ open: true, message: 'Clipboard copy failed' });
+    }
   };
 
   const analyzeFilters = () => {
     setAnalytics({
-      priceRange: `$${filters.priceRange[0].toLocaleString()} - $${filters.priceRange[1].toLocaleString()}`,
+      priceRange: `${formatPrice(filters.priceRange[0])} - ${formatPrice(filters.priceRange[1])}`,
       selectedAmenities: filters.amenities.length,
       selectedFeatures: filters.features.length
     });
@@ -146,7 +157,6 @@ const PropertyFilters = ({ onApplyFilters }) => {
   };
 
   const applyTemplate = (name) => setFilters({ ...filters, ...filterTemplates[name] });
-
   const generateRecommendations = () => {
     const rec = [];
     if (filters.priceRange[1] > 750000) rec.push('Consider adding luxury amenities');

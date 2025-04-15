@@ -1,3 +1,4 @@
+// client/src/components/properties/PropertyList.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -5,18 +6,19 @@ import {
   Typography, Button, Box, IconButton, Chip, Skeleton,
   TextField, InputAdornment, MenuItem, Select, FormControl,
   InputLabel, Pagination, Stack, Alert, Checkbox, Dialog, DialogTitle, DialogContent,
-  TableContainer, Table, TableHead, TableBody,
-  TableRow, TableCell, ToggleButton, ToggleButtonGroup
+  TableContainer, Table, TableHead, TableBody, TableRow, TableCell, ToggleButton, ToggleButtonGroup
 } from '@mui/material';
 import {
   Add, Edit, Delete, LocationOn, Hotel,
   Bathtub, SquareFoot, Search, GridView, ViewList, Compare, Close
 } from '@mui/icons-material';
+
 import { propertyService } from '../../services/propertyService';
 import PropertyFilters from './PropertyFilters';
 import PropertyMap from './PropertyMap';
 import PropertyAnalytics from '../dashboard/PropertyAnalytics';
 import { getFeatureFlags } from '../../config/featureFlags';
+import useAuth from '../../contexts/useAuth';
 
 const featureFlags = getFeatureFlags();
 
@@ -39,6 +41,7 @@ const PropertySkeleton = () => (
 );
 
 const PropertyList = () => {
+  const { user } = useAuth();
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -160,14 +163,22 @@ const PropertyList = () => {
     <Container maxWidth="lg" sx={{ py: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
         <Typography variant="h4">Properties</Typography>
-        <Button variant="contained" startIcon={<Add />} onClick={() => navigate('/properties/new')}>Add Property</Button>
+        {['agent', 'admin'].includes(user?.role) && (
+          <Button
+            variant="contained"
+            startIcon={<Add />}
+            onClick={() => navigate('/properties/add')}
+          >
+            Add Property
+          </Button>
+        )}
       </Box>
 
       <Stack spacing={3} sx={{ mb: 3 }}>
-        <Box sx={{ 
-          display: 'flex', 
-          flexDirection: isMobile ? 'column' : 'row', 
-          gap: 2 
+        <Box sx={{
+          display: 'flex',
+          flexDirection: isMobile ? 'column' : 'row',
+          gap: 2
         }}>
           <TextField
             fullWidth
@@ -261,7 +272,9 @@ const PropertyList = () => {
                   <TableRow key={feature}>
                     <TableCell>{feature.charAt(0).toUpperCase() + feature.slice(1)}</TableCell>
                     {properties.filter(p => selectedProperties.includes(p.id)).map(p => (
-                      <TableCell key={p.id}>{feature === 'price' ? `$${p[feature].toLocaleString()}` : p[feature]}</TableCell>
+                      <TableCell key={p.id}>
+                        {feature === 'price' ? `$${p[feature].toLocaleString()}` : p[feature]}
+                      </TableCell>
                     ))}
                   </TableRow>
                 ))}

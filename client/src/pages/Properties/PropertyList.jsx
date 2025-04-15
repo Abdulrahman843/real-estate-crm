@@ -8,17 +8,19 @@ import {
 } from '@mui/material';
 import {
   Favorite, FavoriteBorder, GridView, List, Share, LocationOn,
-  Hotel, BatchPrediction, Map, CompareArrows, Download
+  Hotel, BatchPrediction, Map, CompareArrows, Download, Add
 } from '@mui/icons-material';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 import PropertyMap from '../../components/properties/PropertyMap';
 import { propertyService } from '../../services/propertyService';
+import useAuth from '../../contexts/useAuth';
 
 const PropertyList = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { user } = useAuth(); // ✅ Add this to check user role
 
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const [properties, setProperties] = useState([]);
@@ -160,6 +162,11 @@ const PropertyList = () => {
         </FormControl>
 
         <Box>
+          {['agent', 'admin'].includes(user?.role) && (
+            <Button variant="contained" startIcon={<Add />} onClick={() => navigate('/properties/add')} sx={{ mr: 2 }}>
+              Add Property
+            </Button>
+          )}
           <IconButton onClick={() => setShowMap(!showMap)}><Map /></IconButton>
           <IconButton onClick={handleExport}><Download /></IconButton>
           <IconButton onClick={() => setFilterDrawer(true)}><CompareArrows /></IconButton>
@@ -221,22 +228,10 @@ const PropertyList = () => {
       <Drawer anchor="right" open={filterDrawer} onClose={() => setFilterDrawer(false)}>
         <Box sx={{ p: 2, width: 300 }}>
           <Typography variant="h6">Filters</Typography>
-          <TextField
-            fullWidth label="Search by Title" sx={{ mt: 2 }}
-            value={filters.title} onChange={(e) => handleFilterChange('title', e.target.value)}
-          />
-          <TextField
-            fullWidth label="City" sx={{ mt: 2 }}
-            value={filters.city} onChange={(e) => handleFilterChange('city', e.target.value)}
-          />
-          <TextField
-            fullWidth label="Min Price" type="number" sx={{ mt: 2 }}
-            value={filters.minPrice} onChange={(e) => handleFilterChange('minPrice', e.target.value)}
-          />
-          <TextField
-            fullWidth label="Max Price" type="number" sx={{ mt: 2 }}
-            value={filters.maxPrice} onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
-          />
+          <TextField fullWidth label="Search by Title" sx={{ mt: 2 }} value={filters.title} onChange={(e) => handleFilterChange('title', e.target.value)} />
+          <TextField fullWidth label="City" sx={{ mt: 2 }} value={filters.city} onChange={(e) => handleFilterChange('city', e.target.value)} />
+          <TextField fullWidth label="Min Price" type="number" sx={{ mt: 2 }} value={filters.minPrice} onChange={(e) => handleFilterChange('minPrice', e.target.value)} />
+          <TextField fullWidth label="Max Price" type="number" sx={{ mt: 2 }} value={filters.maxPrice} onChange={(e) => handleFilterChange('maxPrice', e.target.value)} />
           <Box sx={{ mt: 2, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
             {['House', 'Apartment', 'Condo'].map(type => (
               <Chip

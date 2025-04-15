@@ -64,6 +64,14 @@ const PropertyDetails = () => {
   if (error) return <Alert severity="error">{error}</Alert>;
   if (!property) return <Alert severity="info">Property not found</Alert>;
 
+  const {
+    title, description, price, location, features, images = [],
+    type: propertyType, status
+  } = property;
+
+  const imageUrls = images.map(img => img.url || img);
+  const formattedLocation = `${location?.address}, ${location?.city}, ${location?.state}, ${location?.zipCode}`;
+
   return (
     <Container maxWidth="lg">
       <Box sx={{ mb: 4 }}>
@@ -77,11 +85,11 @@ const PropertyDetails = () => {
 
         <Paper sx={{ p: 3 }}>
           <Grid container spacing={3}>
-            {/* Header */}
             <Grid item xs={12}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Typography variant="h4" gutterBottom>{property.title}</Typography>
+                <Typography variant="h4" gutterBottom>{title}</Typography>
                 <Box>
+                  <Chip label={status || 'Available'} color={status === 'sold' ? 'default' : 'success'} sx={{ mr: 2 }} />
                   <Button startIcon={<Edit />} onClick={() => navigate(`/properties/edit/${id}`)} sx={{ mr: 1 }}>
                     Edit
                   </Button>
@@ -92,10 +100,9 @@ const PropertyDetails = () => {
               </Box>
             </Grid>
 
-            {/* Images */}
             <Grid item xs={12}>
               <ImageList sx={{ height: isMobile ? 300 : 450 }} cols={isMobile ? 1 : 2} variant="quilted">
-                {property.images.map((image, index) => (
+                {imageUrls.map((image, index) => (
                   <ImageListItem
                     key={index}
                     onClick={() => {
@@ -104,67 +111,64 @@ const PropertyDetails = () => {
                     }}
                     sx={{ cursor: 'pointer' }}
                   >
-                    <img src={image} alt={`Property ${index + 1}`} loading="lazy" style={{ height: '100%', objectFit: 'cover' }} />
+                    <img
+                      src={image}
+                      alt={`Property ${index + 1}`}
+                      loading="lazy"
+                      style={{ height: '100%', objectFit: 'cover' }}
+                    />
                   </ImageListItem>
                 ))}
               </ImageList>
             </Grid>
 
-            {/* Price and Location */}
             <Grid item xs={12}>
               <Typography variant="h4" color="primary" gutterBottom>
-                ${property.price.toLocaleString()}
+                £{price?.toLocaleString()}
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center' }}>
                 <LocationOn color="action" />
-                <Typography variant="h6">{property.location}</Typography>
+                <Typography variant="h6">{formattedLocation}</Typography>
               </Box>
             </Grid>
 
-            {/* Google Maps */}
             <Grid item xs={12}>
-              <Box sx={{ mt: 2 }}>
-                <Typography variant="h6" gutterBottom>Map Preview</Typography>
-                <iframe
-                  title="property-map"
-                  width="100%"
-                  height="300"
-                  frameBorder="0"
-                  style={{ border: 0 }}
-                  referrerPolicy="no-referrer-when-downgrade"
-                  src={`https://www.google.com/maps?q=${encodeURIComponent(property.location)}&output=embed`}
-                  allowFullScreen
-                ></iframe>
-              </Box>
-            </Grid>
-
-            {/* Property Details */}
-            <Grid item xs={12}>
-              <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                <Chip icon={<Home />} label={property.propertyType} />
-                <Chip icon={<SquareFoot />} label={`${property.area} sq ft`} />
-                <Chip icon={<Hotel />} label={`${property.bedrooms} Beds`} />
-                <Chip icon={<Bathtub />} label={`${property.bathrooms} Baths`} />
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                <Chip icon={<Home />} label={propertyType} />
+                <Chip icon={<SquareFoot />} label={`${features?.squareFeet || 0} sq ft`} />
+                <Chip icon={<Hotel />} label={`${features?.bedrooms || 0} Beds`} />
+                <Chip icon={<Bathtub />} label={`${features?.bathrooms || 0} Baths`} />
               </Box>
             </Grid>
 
             <Grid item xs={12}>
               <Divider sx={{ my: 2 }} />
               <Typography variant="h6" gutterBottom>Description</Typography>
-              <Typography variant="body1" paragraph>{property.description}</Typography>
+              <Typography variant="body1" paragraph>{description}</Typography>
             </Grid>
 
-            {/* Amenities */}
             <Grid item xs={12}>
               <Typography variant="h6" gutterBottom>Amenities</Typography>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                {property.amenities.map((amenity, index) => (
-                  <Chip key={index} label={amenity} />
-                ))}
+                {features?.amenities?.length > 0 ? features.amenities.map((amenity, i) => (
+                  <Chip key={i} label={amenity} />
+                )) : <Typography>No amenities listed</Typography>}
               </Box>
             </Grid>
 
-            {/* Comments */}
+            <Grid item xs={12}>
+              <Typography variant="h6" gutterBottom>Map</Typography>
+              <iframe
+                title="Google Map"
+                width="100%"
+                height="300"
+                frameBorder="0"
+                style={{ border: 0 }}
+                src={`https://www.google.com/maps?q=${encodeURIComponent(formattedLocation)}&output=embed`}
+                allowFullScreen
+              />
+            </Grid>
+
             <Grid item xs={12}>
               <Typography variant="h6" gutterBottom>Comments</Typography>
               <Box component="form" onSubmit={(e) => {
@@ -194,22 +198,22 @@ const PropertyDetails = () => {
               </Box>
             </Grid>
           </Grid>
-        </Paper>
 
-        {isLightboxOpen && (
-          <Lightbox
-            mainSrc={property.images[lightboxIndex]}
-            nextSrc={property.images[(lightboxIndex + 1) % property.images.length]}
-            prevSrc={property.images[(lightboxIndex + property.images.length - 1) % property.images.length]}
-            onCloseRequest={() => setIsLightboxOpen(false)}
-            onMovePrevRequest={() =>
-              setLightboxIndex((lightboxIndex + property.images.length - 1) % property.images.length)
-            }
-            onMoveNextRequest={() =>
-              setLightboxIndex((lightboxIndex + 1) % property.images.length)
-            }
-          />
-        )}
+          {isLightboxOpen && (
+            <Lightbox
+              mainSrc={imageUrls[lightboxIndex]}
+              nextSrc={imageUrls[(lightboxIndex + 1) % imageUrls.length]}
+              prevSrc={imageUrls[(lightboxIndex + imageUrls.length - 1) % imageUrls.length]}
+              onCloseRequest={() => setIsLightboxOpen(false)}
+              onMovePrevRequest={() =>
+                setLightboxIndex((lightboxIndex + imageUrls.length - 1) % imageUrls.length)
+              }
+              onMoveNextRequest={() =>
+                setLightboxIndex((lightboxIndex + 1) % imageUrls.length)
+              }
+            />
+          )}
+        </Paper>
       </Box>
     </Container>
   );
