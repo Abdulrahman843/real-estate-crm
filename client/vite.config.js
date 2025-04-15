@@ -8,17 +8,17 @@ export default defineConfig(({ mode }) => {
   const isProd = mode === 'production';
 
   return {
-    base: '/', 
+    base: '/',
     plugins: [
       react(),
 
-      // ✅ PWA plugin with navigateFallback to fix old service worker caching
+      // ✅ PWA support
       VitePWA({
         registerType: 'autoUpdate',
         manifest: {
           name: 'Real Estate CRM',
           short_name: 'RealCRM',
-          version: '2.0.0', // optional: helps trigger update on clients
+          version: '2.0.0',
           theme_color: '#ffffff',
           background_color: '#ffffff',
           display: 'standalone',
@@ -43,10 +43,10 @@ export default defineConfig(({ mode }) => {
           navigateFallback: 'index.html',
           cleanupOutdatedCaches: true,
           skipWaiting: true,
-          clientsClaim: true, 
+          clientsClaim: true,
           runtimeCaching: [
             {
-              urlPattern: /^https?:\/\/.*\.(js|css|json)/i, 
+              urlPattern: /^https?:\/\/.*\.(js|css|json)/i,
               handler: 'NetworkFirst'
             },
             {
@@ -65,17 +65,7 @@ export default defineConfig(({ mode }) => {
       chunkSizeWarningLimit: 2000,
       rollupOptions: {
         output: {
-          manualChunks(id) {
-            if (id.includes('node_modules')) {
-              if (id.includes('@mui')) {
-                return 'mui';
-              }
-              if (id.includes('react')) {
-                return 'react';
-              }
-              return 'vendor';
-            }
-          },
+          // ❌ manualChunks removed to fix blank page bug
           chunkFileNames: 'assets/[name]-[hash].js',
           entryFileNames: 'assets/[name]-[hash].js',
           assetFileNames: 'assets/[name]-[hash][extname]'
@@ -102,7 +92,6 @@ export default defineConfig(({ mode }) => {
         }
       }
     },
-
     preview: {
       port: 4173,
       host: true
