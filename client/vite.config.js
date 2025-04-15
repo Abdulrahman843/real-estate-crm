@@ -2,7 +2,7 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { visualizer } from 'rollup-plugin-visualizer';
-import viteCompression from 'vite-plugin-compression';
+// import viteCompression from 'vite-plugin-compression';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(({ mode }) => {
@@ -13,12 +13,9 @@ export default defineConfig(({ mode }) => {
     base: './',
     plugins: [
       react(),
-      // 👉 Only enable compression plugin in local production builds
-      isProd && process.env.VERCEL !== '1' && viteCompression({
-        algorithm: 'brotliCompress',
-        ext: '.br',
-        threshold: 10240 // Only compress files > 10kb
-      }),
+      // ❌ DISABLED COMPRESSION ON VERCEL
+      // isProd && !process.env.VERCEL && viteCompression({ ... }),
+
       VitePWA({
         registerType: 'autoUpdate',
         manifest: {
@@ -53,7 +50,7 @@ export default defineConfig(({ mode }) => {
                 cacheName: 'api-cache',
                 expiration: {
                   maxEntries: 100,
-                  maxAgeSeconds: 60 * 60 * 24 // 24 hours
+                  maxAgeSeconds: 60 * 60 * 24
                 }
               }
             }
