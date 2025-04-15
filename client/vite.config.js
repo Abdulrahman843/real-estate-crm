@@ -11,8 +11,6 @@ export default defineConfig(({ mode }) => {
     base: '/',
     plugins: [
       react(),
-
-      // ✅ PWA support
       VitePWA({
         registerType: 'autoUpdate',
         manifest: {
@@ -28,15 +26,15 @@ export default defineConfig(({ mode }) => {
               src: '/icon-192.png',
               sizes: '192x192',
               type: 'image/png',
-              purpose: 'any maskable'
+              purpose: 'any maskable',
             },
             {
               src: '/icon-512.png',
               sizes: '512x512',
               type: 'image/png',
-              purpose: 'any maskable'
-            }
-          ]
+              purpose: 'any maskable',
+            },
+          ],
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
@@ -44,39 +42,16 @@ export default defineConfig(({ mode }) => {
           cleanupOutdatedCaches: true,
           skipWaiting: true,
           clientsClaim: true,
-          runtimeCaching: [
-            {
-              urlPattern: /^https?:\/\/.*\.(js|css|json)/i,
-              handler: 'NetworkFirst'
-            },
-            {
-              urlPattern: /^https?:\/\/.*\.(png|jpg|jpeg|gif|svg|ico)/i,
-              handler: 'CacheFirst'
-            }
-          ]
-        }
-      })
-    ].filter(Boolean),
+        },
+      }),
+    ],
     build: {
-      target: 'es2015',
-      sourcemap: !isProd,
-      minify: 'terser',
-      cssCodeSplit: false,
-      chunkSizeWarningLimit: 2000,
-      rollupOptions: {
-        output: {
-          // ❌ manualChunks removed to fix blank page bug
-          chunkFileNames: 'assets/[name]-[hash].js',
-          entryFileNames: 'assets/[name]-[hash].js',
-          assetFileNames: 'assets/[name]-[hash][extname]'
-        }
-      },
-      terserOptions: {
-        compress: {
-          drop_console: isProd,
-          drop_debugger: isProd
-        }
-      }
+      target: 'esnext', // modern browsers
+      minify: isProd ? 'esbuild' : false, // ✅ avoid Terser
+      cssCodeSplit: true,
+      sourcemap: true,
+      chunkSizeWarningLimit: 1500,
+      // ⚠️ remove manualChunks logic to prevent pre-binding 'p'
     },
     server: {
       port: 5173,
@@ -84,17 +59,17 @@ export default defineConfig(({ mode }) => {
         '/api': {
           target: env.VITE_API_URL || 'http://localhost:5000',
           changeOrigin: true,
-          secure: isProd
+          secure: isProd,
         },
         '/ws': {
           target: env.VITE_WEBSOCKET_URL || 'ws://localhost:5000',
-          ws: true
-        }
-      }
+          ws: true,
+        },
+      },
     },
     preview: {
       port: 4173,
-      host: true
-    }
+      host: true,
+    },
   };
 });
