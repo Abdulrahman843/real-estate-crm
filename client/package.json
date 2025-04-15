@@ -86,7 +86,6 @@
     "rollup-plugin-visualizer": "^5.14.0",
     "storybook": "^8.6.12",
     "vite": "^5.4.17",
-    "vite-plugin-compression": "^0.5.1",
     "vite-plugin-pwa": "^0.19.8"
   },
   "eslintConfig": {
