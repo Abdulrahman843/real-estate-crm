@@ -9,7 +9,7 @@ export default defineConfig(({ mode }) => {
   const isProd = mode === 'production';
 
   return {
-    base: './', 
+    base: '/', 
     plugins: [
       react(),
 
@@ -41,16 +41,20 @@ export default defineConfig(({ mode }) => {
         },
         workbox: {
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-          navigateFallback: '/index.html', // ✅ ensures fallback to main route
+          navigateFallback: 'index.html',
+          cleanupOutdatedCaches: true, 
           runtimeCaching: [
             {
-              urlPattern: /^https:\/\/api\.yourapp\.com\/.*/i,
+              urlPattern: /^https:\/\/api\..*/i, 
               handler: 'NetworkFirst',
               options: {
                 cacheName: 'api-cache',
                 expiration: {
                   maxEntries: 100,
                   maxAgeSeconds: 60 * 60 * 24
+                },
+                cacheableResponse: {
+                  statuses: [0, 200]
                 }
               }
             }
@@ -72,10 +76,9 @@ export default defineConfig(({ mode }) => {
     build: {
       target: 'es2015',
       sourcemap: !isProd,
-      minify: isProd ? 'terser' : false,
+      minify: 'terser',
       cssCodeSplit: true,
       chunkSizeWarningLimit: 1000,
-      reportCompressedSize: false,
       rollupOptions: {
         output: {
           manualChunks: {
@@ -99,12 +102,12 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       proxy: {
         '/api': {
-          target: env.VITE_API_URL,
+          target: env.VITE_API_URL || 'http://localhost:5000',
           changeOrigin: true,
           secure: isProd
         },
         '/ws': {
-          target: env.VITE_WEBSOCKET_URL,
+          target: env.VITE_WEBSOCKET_URL || 'ws://localhost:5000',
           ws: true
         }
       }
