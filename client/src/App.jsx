@@ -28,9 +28,6 @@ import NotFound from './pages/NotFound';
 import Forbidden from './pages/Forbidden';
 import Unauthorized from './pages/Unauthorized';
 
-// App.jsx
-// Added to trigger Vercel redeploy
-
 function App() {
   const { user } = useAuth();
 
@@ -96,14 +93,34 @@ function App() {
             </ProtectedRoute>
           } />
 
-          {/* Property Routes */}
-          <Route path="/properties" element={<ProtectedRoute><Properties /></ProtectedRoute>} />
-          <Route path="/properties/:id" element={<ProtectedRoute><PropertyDetails /></ProtectedRoute>} />
-          <Route path="/properties/add" element={<ProtectedRoute allowedRoles={['agent', 'admin']}><AddProperty /></ProtectedRoute>} />
-          <Route path="/properties/edit/:id" element={<ProtectedRoute allowedRoles={['agent', 'admin']}><EditProperty /></ProtectedRoute>} />
+          {/* Property Routes - Reordered for proper routing */}
+          <Route path="/properties/add" element={
+            <ProtectedRoute allowedRoles={['agent', 'admin']}>
+              <AddProperty />
+            </ProtectedRoute>
+          } />
+          <Route path="/properties/edit/:id" element={
+            <ProtectedRoute allowedRoles={['agent', 'admin']}>
+              <EditProperty />
+            </ProtectedRoute>
+          } />
+          <Route path="/properties/:id" element={
+            <ProtectedRoute>
+              <PropertyDetails />
+            </ProtectedRoute>
+          } />
+          <Route path="/properties" element={
+            <ProtectedRoute>
+              <Properties />
+            </ProtectedRoute>
+          } />
 
           {/* Admin */}
-          <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/admin" element={
+            <ProtectedRoute allowedRoles={['admin']}>
+              <AdminDashboard />
+            </ProtectedRoute>
+          } />
         </Route>
 
         {/* Custom Error Pages */}
