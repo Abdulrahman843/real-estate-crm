@@ -68,7 +68,6 @@ const AddProperty = () => {
 
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
-      // Fallback to Street View image if no image uploaded
       if (!values.images.length) {
         const { address, city, state, zipCode, country } = values.location;
         const fullAddress = `${address}, ${city}, ${state}, ${zipCode}, ${country}`;
@@ -77,7 +76,26 @@ const AddProperty = () => {
         values.images.push({ url: fallbackUrl, label: 'cover' });
       }
 
-      const response = await propertyService.createProperty(values);
+      const formData = new FormData();
+      Object.entries(values).forEach(([key, value]) => {
+        if (key === 'images') {
+          value.forEach((img) => {
+            if (typeof img === 'string') {
+              formData.append('images', img);
+            } else {
+              formData.append('images', img.file || img);
+            }
+          });
+        } else if (typeof value === 'object' && !Array.isArray(value)) {
+          Object.entries(value).forEach(([subKey, subVal]) =>
+            formData.append(`${key}.${subKey}`, subVal)
+          );
+        } else {
+          formData.append(key, value);
+        }
+      });
+
+      const response = await propertyService.createProperty(formData);
       if (response?.success || response?.status === 201) {
         toast.success('Property created successfully');
         navigate('/properties');
@@ -104,58 +122,20 @@ const AddProperty = () => {
           <Form noValidate>
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
-                <TextField
-                  name="title"
-                  label="Title"
-                  fullWidth
-                  value={values.title}
-                  onChange={handleChange}
-                  error={touched.title && !!errors.title}
-                  helperText={touched.title && errors.title}
-                />
+                <TextField name="title" label="Title" fullWidth value={values.title} onChange={handleChange} error={touched.title && !!errors.title} helperText={touched.title && errors.title} />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField
-                  name="description"
-                  label="Description"
-                  fullWidth
-                  multiline
-                  minRows={3}
-                  value={values.description}
-                  onChange={handleChange}
-                  error={touched.description && !!errors.description}
-                  helperText={touched.description && errors.description}
-                />
+                <TextField name="description" label="Description" fullWidth multiline minRows={3} value={values.description} onChange={handleChange} error={touched.description && !!errors.description} helperText={touched.description && errors.description} />
               </Grid>
 
               <Grid item xs={12} sm={4}>
-                <TextField
-                  name="price"
-                  label="Price"
-                  fullWidth
-                  type="number"
-                  value={values.price}
-                  onChange={handleChange}
-                />
+                <TextField name="price" label="Price" fullWidth type="number" value={values.price} onChange={handleChange} />
               </Grid>
               <Grid item xs={12} sm={4}>
-                <TextField
-                  name="type"
-                  label="Type"
-                  fullWidth
-                  value={values.type}
-                  onChange={handleChange}
-                />
+                <TextField name="type" label="Type" fullWidth value={values.type} onChange={handleChange} />
               </Grid>
               <Grid item xs={12} sm={4}>
-                <TextField
-                  name="features.squareFeet"
-                  label="Area (sqft)"
-                  fullWidth
-                  type="number"
-                  value={values.features.squareFeet}
-                  onChange={handleChange}
-                />
+                <TextField name="features.squareFeet" label="Area (sqft)" fullWidth type="number" value={values.features.squareFeet} onChange={handleChange} />
               </Grid>
 
               <Grid item xs={12}>
@@ -175,24 +155,10 @@ const AddProperty = () => {
               ))}
 
               <Grid item xs={6} sm={3}>
-                <TextField
-                  name="features.bedrooms"
-                  label="Bedrooms"
-                  fullWidth
-                  type="number"
-                  value={values.features.bedrooms}
-                  onChange={handleChange}
-                />
+                <TextField name="features.bedrooms" label="Bedrooms" fullWidth type="number" value={values.features.bedrooms} onChange={handleChange} />
               </Grid>
               <Grid item xs={6} sm={3}>
-                <TextField
-                  name="features.bathrooms"
-                  label="Bathrooms"
-                  fullWidth
-                  type="number"
-                  value={values.features.bathrooms}
-                  onChange={handleChange}
-                />
+                <TextField name="features.bathrooms" label="Bathrooms" fullWidth type="number" value={values.features.bathrooms} onChange={handleChange} />
               </Grid>
 
               <Grid item xs={12}>
