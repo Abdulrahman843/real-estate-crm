@@ -6,10 +6,6 @@ const { Readable } = require('stream');
 const sharp = require('sharp');
 const getStreetViewImage = require('../utils/streetView');
 
-
-// ... All controller methods consolidated and fully updated
-
-// START: Core controllers
 const getProperties = async (req, res) => {
   try {
     const {
@@ -62,7 +58,6 @@ const getProperties = async (req, res) => {
   }
 };
 
-// Get property by ID
 const getProperty = async (req, res) => {
   try {
     const property = await Property.findById(req.params.id).populate('agent', 'name email');
@@ -73,26 +68,54 @@ const getProperty = async (req, res) => {
   }
 };
 
-const buildQuery = (queryParams) => {
-  const query = {};
-  const { type, status, minPrice, maxPrice, city, country, bedrooms, amenities, lat, lng, radius } = queryParams;
-  if (type) query.type = type;
-  if (status) query.status = status;
-  if (city) query['location.city'] = { $regex: city, $options: 'i' };
-  if (country) query['location.country'] = { $regex: country, $options: 'i' };
-  if (bedrooms) query['features.bedrooms'] = parseInt(bedrooms);
-  if (minPrice || maxPrice) {
-    query.price = {};
-    if (minPrice) query.price.$gte = parseFloat(minPrice);
-    if (maxPrice) query.price.$lte = parseFloat(maxPrice);
+const createProperty = async (req, res) => {
+  try {
+    const data = req.body;
+
+    const fullAddress = `${data['location.address'] || ''}, ${data['location.city'] || ''}, ${data['location.state'] || ''}, ${data['location.zipCode'] || ''}, ${data['location.country'] || ''}`;
+    const imageUrl = getStreetViewImage(fullAddress);
+
+    const newProperty = new Property({
+      title: data.title,
+      description: data.description,
+      price: parseFloat(data.price),
+      type: data.type,
+      status: data.status || 'available',
+      agent: req.user._id,
+      location: {
+        address: data['location.address'],
+        city: data['location.city'],
+        state: data['location.state'],
+        zipCode: data['location.zipCode'],
+        country: data['location.country'],
+        lat: parseFloat(data['location.lat'] || 0),
+        lng: parseFloat(data['location.lng'] || 0)
+      },
+      features: {
+        bedrooms: parseInt(data['features.bedrooms']),
+        bathrooms: parseInt(data['features.bathrooms']),
+        squareFeet: parseInt(data['features.squareFeet']),
+        amenities: Array.isArray(data['features.amenities'])
+          ? data['features.amenities']
+          : typeof data['features.amenities'] === 'string'
+          ? data['features.amenities'].split(',')
+          : []
+      },
+      images: [
+        {
+          url: imageUrl,
+          public_id: 'google_street_view',
+          thumbnail: imageUrl.replace('800x600', '300x200')
+        }
+      ]
+    });
+
+    const saved = await newProperty.save();
+    res.status(201).json(saved);
+  } catch (error) {
+    console.error('[Create Property Error]', error);
+    res.status(400).json({ message: error.message });
   }
-  if (amenities) query['features.amenities'] = { $in: amenities.split(',') };
-  if (lat && lng && radius) {
-    query['location.coordinates'] = {
-      $geoWithin: { $centerSphere: [[parseFloat(lng), parseFloat(lat)], parseFloat(radius) / 6378.1] }
-    };
-  }
-  return query;
 };
 
 const getAgentProperties = async (req, res) => {
@@ -101,7 +124,6 @@ const getAgentProperties = async (req, res) => {
     const properties = await Property.find({ agent: agentId })
       .populate('agent', 'name email')
       .sort({ createdAt: -1 });
-
     res.json(properties);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -112,54 +134,15 @@ const updatePropertyStatus = async (req, res) => {
   try {
     const { status } = req.body;
     const property = await Property.findById(req.params.id);
-
     if (!property) return res.status(404).json({ message: 'Property not found' });
-
     if (property.agent.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized' });
     }
-
     property.status = status;
     property.updatedAt = new Date();
     await property.save();
-
     res.json({ message: 'Property status updated', property });
   } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-};
-
-const createProperty = async (req, res) => {
-  try {
-    const { location } = req.body;
-
-    // ✅ Safely build full address string
-    const fullAddress = `${location?.address || ''}, ${location?.city || ''}, ${location?.state || ''} ${location?.zipCode || ''}, ${location?.country || ''}`;
-
-    // ✅ Log to debug what's being sent
-    console.log('[Full Address for StreetView]', fullAddress);
-
-    // ✅ Generate Google Street View URL
-    const imageUrl = getStreetViewImage(fullAddress);
-
-    // ✅ Log to see final URL for manual testing
-    console.log('[Google StreetView URL]', imageUrl);
-
-    const property = new Property({
-      ...req.body,
-      agent: req.user._id,
-      status: req.body.status || 'available',
-      images: [{
-        url: imageUrl,
-        public_id: 'google_street_view',
-        thumbnail: imageUrl.replace('800x600', '300x200')
-      }]
-    });
-
-    const savedProperty = await property.save();
-    res.status(201).json(savedProperty);
-  } catch (error) {
-    console.error('[Create Property Error]', error);
     res.status(400).json({ message: error.message });
   }
 };
@@ -168,52 +151,67 @@ const updateProperty = async (req, res) => {
   try {
     const property = await Property.findById(req.params.id);
     if (!property) return res.status(404).json({ message: 'Property not found' });
-
     if (property.agent.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized' });
     }
 
-    const locationChanged = req.body.location && JSON.stringify(req.body.location) !== JSON.stringify(property.location);
+    const data = req.body;
+    const fullAddress = `${data['location.address'] || ''}, ${data['location.city'] || ''}, ${data['location.state'] || ''}, ${data['location.zipCode'] || ''}, ${data['location.country'] || ''}`;
+    const imageUrl = getStreetViewImage(fullAddress);
 
-    const fullAddress = `${req.body.location?.address || property.location.address}, ${req.body.location?.city || property.location.city}, ${req.body.location?.state || property.location.state} ${req.body.location?.zipCode || property.location.zipCode}, ${req.body.location?.country || property.location.country}`;
+    property.set({
+      title: data.title,
+      description: data.description,
+      price: parseFloat(data.price),
+      type: data.type,
+      status: data.status || 'available',
+      location: {
+        address: data['location.address'],
+        city: data['location.city'],
+        state: data['location.state'],
+        zipCode: data['location.zipCode'],
+        country: data['location.country'],
+        lat: parseFloat(data['location.lat'] || 0),
+        lng: parseFloat(data['location.lng'] || 0),
+      },
+      features: {
+        bedrooms: parseInt(data['features.bedrooms']),
+        bathrooms: parseInt(data['features.bathrooms']),
+        squareFeet: parseInt(data['features.squareFeet']),
+        amenities: Array.isArray(data['features.amenities']) ? data['features.amenities'] : typeof data['features.amenities'] === 'string' ? data['features.amenities'].split(',') : []
+      },
+      images: [
+        {
+          url: imageUrl,
+          public_id: 'google_street_view',
+          thumbnail: imageUrl.replace('800x600', '300x200')
+        }
+      ],
+      updatedAt: new Date()
+    });
 
-    let imageUrl = getStreetViewImage(fullAddress);
-    if (!imageUrl) imageUrl = 'https://via.placeholder.com/600x400?text=No+Image+Found';
-
-    const updatedData = {
-      ...req.body,
-      updatedAt: Date.now(),
-      images: locationChanged ? [{
-        url: imageUrl,
-        public_id: 'google_street_view',
-        thumbnail: imageUrl.replace('/600x400', '/300x200')
-      }] : property.images
-    };
-
-    const updatedProperty = await Property.findByIdAndUpdate(req.params.id, updatedData, { new: true, runValidators: true }).populate('agent', 'name email');
-    res.json(updatedProperty);
+    await property.save();
+    res.json(property);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
 };
 
+
 const deleteProperty = async (req, res) => {
   try {
     const property = await Property.findById(req.params.id);
     if (!property) return res.status(404).json({ message: 'Property not found' });
-
     if (property.agent.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized' });
     }
-
-    await Property.findByIdAndDelete(req.params.id);
-    res.json({ message: 'Property removed successfully' });
+    await property.remove();
+    res.json({ message: 'Property deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Upload single image
 const uploadPropertyImage = async (req, res) => {
   try {
     const property = await Property.findById(req.params.id);
@@ -254,7 +252,6 @@ const uploadPropertyImage = async (req, res) => {
   }
 };
 
-// Upload multiple images (gallery)
 const uploadPropertyGallery = async (req, res) => {
   try {
     const property = await Property.findById(req.params.id);
@@ -300,7 +297,6 @@ const uploadPropertyGallery = async (req, res) => {
   }
 };
 
-// Delete a property image
 const deletePropertyImage = async (req, res) => {
   try {
     const { id, imageId } = req.params;
@@ -317,7 +313,7 @@ const deletePropertyImage = async (req, res) => {
   }
 };
 
-// Add review
+// --- Add review ---
 const addPropertyReview = async (req, res) => {
   try {
     const { rating, comment } = req.body;
@@ -340,7 +336,7 @@ const addPropertyReview = async (req, res) => {
   }
 };
 
-// Get reviews
+// --- Get property reviews ---
 const getPropertyReviews = async (req, res) => {
   try {
     const property = await Property.findById(req.params.id).populate('reviews.user', 'name');
@@ -352,7 +348,7 @@ const getPropertyReviews = async (req, res) => {
   }
 };
 
-// Toggle favorite
+// --- Toggle favorite ---
 const toggleFavorite = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
@@ -372,7 +368,7 @@ const toggleFavorite = async (req, res) => {
   }
 };
 
-// Get user favorites
+// --- Get user favorites ---
 const getFavorites = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).populate({
@@ -386,7 +382,7 @@ const getFavorites = async (req, res) => {
   }
 };
 
-// Track views
+// --- Track property views ---
 const trackPropertyView = async (req, res) => {
   try {
     const property = await Property.findById(req.params.id);
@@ -407,7 +403,7 @@ const trackPropertyView = async (req, res) => {
   }
 };
 
-// Analytics
+// --- Property analytics ---
 const getPropertyAnalytics = async (req, res) => {
   try {
     const property = await Property.findById(req.params.id);
@@ -427,7 +423,7 @@ const getPropertyAnalytics = async (req, res) => {
   }
 };
 
-// Report
+// --- Report property ---
 const reportProperty = async (req, res) => {
   try {
     const { reason } = req.body;
