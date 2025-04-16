@@ -21,18 +21,13 @@ const dashboardApi = axios.create({
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
-    // Allow the content type to be set per-request
-    if (!config.headers['Content-Type']) {
-      config.headers['Content-Type'] = 'application/json';
-    }
     return config;
   });
 
   api.interceptors.response.use(
     response => response,
     error => {
-      const message = error.response?.data?.message || error.message || 'API Error';
-      console.error(`[API Error] ${message}`);
+      console.error('API Error:', error.response?.data || error.message);
       return Promise.reject(error);
     }
   );
@@ -57,21 +52,27 @@ export const propertyService = {
   },
 
   createProperty: async (data) => {
-    const config = {
+    const config = data instanceof FormData ? {
       headers: {
-        'Content-Type': data instanceof FormData ? 'multipart/form-data' : 'application/json'
+        'Content-Type': 'multipart/form-data',
+        'Accept': 'application/json'
       }
-    };
+    } : {};
+
+    console.log('Creating property:', data);
     const response = await propertyApi.post('', data, config);
-    return response.data;
+    console.log('Property created:', response.data);
+    return response;
   },
 
   updateProperty: async (id, data) => {
-    const config = {
+    const config = data instanceof FormData ? {
       headers: {
-        'Content-Type': data instanceof FormData ? 'multipart/form-data' : 'application/json'
+        'Content-Type': 'multipart/form-data',
+        'Accept': 'application/json'
       }
-    };
+    } : {};
+
     const response = await propertyApi.put(`/${id}`, data, config);
     return response.data;
   },
@@ -109,53 +110,22 @@ export const propertyService = {
     return response.data;
   },
 
-  // Analytics
-  getPropertyAnalytics: async (id) => {
-    const response = await propertyApi.get(`/${id}/analytics`);
-    return response.data;
-  },
-
-  trackView: async (id) => {
-    const response = await propertyApi.post(`/${id}/track`);
-    return response.data;
-  },
-
-  // Reviews & Reports
-  submitReview: async (propertyId, reviewData) => {
-    const response = await propertyApi.post(`/${propertyId}/reviews`, reviewData);
-    return response.data;
-  },
-
-  getReviews: async (propertyId) => {
-    const response = await propertyApi.get(`/${propertyId}/reviews`);
-    return response.data;
-  },
-
-  reportProperty: async (propertyId, reportData) => {
-    const response = await propertyApi.post(`/${propertyId}/report`, reportData);
-    return response.data;
-  },
-
   // Images
   uploadImages: async (propertyId, files) => {
     const formData = new FormData();
     files.forEach(file => formData.append('images', file));
+    
     const response = await propertyApi.post(`/${propertyId}/images`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
+      headers: {
+        'Content-Type': 'multipart/form-data',
+        'Accept': 'application/json'
+      }
     });
     return response.data;
   },
 
   deleteImage: async (propertyId, imageId) => {
     const response = await propertyApi.delete(`/${propertyId}/images/${imageId}`);
-    return response.data;
-  },
-
-  // Gallery
-  uploadGallery: async (propertyId, galleryData) => {
-    const response = await propertyApi.post(`/${propertyId}/gallery`, galleryData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    });
     return response.data;
   },
 

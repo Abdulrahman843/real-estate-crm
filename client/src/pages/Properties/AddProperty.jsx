@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
 import {
-  Box, Button, TextField, Grid, Typography, Chip, Stack
+  Box, Button, TextField, Grid, Typography, Chip, Stack, CircularProgress
 } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { propertyService } from '../../services/propertyService';
@@ -10,35 +10,9 @@ import { toast } from 'react-toastify';
 import ImageUploader from './ImageUploader';
 import DraggableMap from '../../components/maps/DraggableMap';
 
-const amenitiesOptions = [
-  'Pool', 'Garage', 'Garden', 'Balcony', 'Security System',
-  'Air Conditioning', 'Heating', 'Furnished', 'Parking', 'Gym',
-  'Storage', 'Elevator', 'Pet Friendly'
-];
-
-const validationSchema = Yup.object({
-  title: Yup.string().required('Title is required'),
-  description: Yup.string().required('Description is required'),
-  price: Yup.number().required('Price is required').positive(),
-  type: Yup.string().required('Type is required'),
-  location: Yup.object().shape({
-    address: Yup.string().required('Address is required'),
-    city: Yup.string().required('City is required'),
-    state: Yup.string().required('State is required'),
-    zipCode: Yup.string().required('ZIP Code is required'),
-    country: Yup.string().required('Country is required')
-  }),
-  features: Yup.object().shape({
-    bedrooms: Yup.number().required('Bedrooms are required').positive(),
-    bathrooms: Yup.number().required('Bathrooms are required').positive(),
-    squareFeet: Yup.number().required('Area is required').positive(),
-    amenities: Yup.array().of(Yup.string())
-  }),
-  images: Yup.array().min(1, 'At least one image is required')
-});
-
 const AddProperty = () => {
   const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const initialValues = {
     title: '',
@@ -51,8 +25,10 @@ const AddProperty = () => {
       state: '',
       zipCode: '',
       country: '',
-      lat: 0,
-      lng: 0
+      coordinates: {
+        lat: 0,
+        lng: 0
+      }
     },
     features: {
       bedrooms: '',
@@ -60,46 +36,60 @@ const AddProperty = () => {
       squareFeet: '',
       amenities: []
     },
-    status: 'available',
     images: []
   };
 
-  const handleSubmit = async (values, { setSubmitting }) => {
+  const validationSchema = Yup.object({
+    title: Yup.string().required('Title is required'),
+    description: Yup.string().required('Description is required'),
+    price: Yup.number().required('Price is required').positive('Price must be positive'),
+    type: Yup.string().required('Property type is required'),
+    location: Yup.object({
+      address: Yup.string().required('Address is required'),
+      city: Yup.string().required('City is required'),
+      state: Yup.string().required('State is required'),
+      zipCode: Yup.string().required('ZIP Code is required'),
+      country: Yup.string().required('Country is required')
+    }),
+    features: Yup.object({
+      bedrooms: Yup.number().required('Number of bedrooms is required').min(0),
+      bathrooms: Yup.number().required('Number of bathrooms is required').min(0),
+      squareFeet: Yup.number().required('Square footage is required').positive()
+    })
+  });
+
+  const amenitiesOptions = [
+    'Pool', 'Garage', 'Garden', 'Balcony', 'Security System',
+    'Air Conditioning', 'Heating', 'Furnished', 'Parking', 'Gym',
+    'Storage', 'Elevator', 'Pet Friendly'
+  ];
+
+  const handleSubmit = async (values, { setSubmitting, resetForm }) => {
     try {
+      setIsSubmitting(true);
       const formData = new FormData();
-      
+
       // Append basic fields
       formData.append('title', values.title);
       formData.append('description', values.description);
       formData.append('price', values.price);
       formData.append('type', values.type);
-      formData.append('status', values.status);
 
-      // Append location fields
-      Object.keys(values.location).forEach(key => {
-        formData.append(`location[${key}]`, values.location[key]);
-      });
+      // Append location as JSON string
+      formData.append('location', JSON.stringify(values.location));
 
-      // Append features
-      Object.keys(values.features).forEach(key => {
-        if (key === 'amenities') {
-          values.features.amenities.forEach(amenity => {
-            formData.append('features[amenities][]', amenity);
-          });
-        } else {
-          formData.append(`features[${key}]`, values.features[key]);
-        }
-      });
+      // Append features as JSON string
+      formData.append('features', JSON.stringify(values.features));
 
       // Append images
       if (values.images?.length > 0) {
-        values.images.forEach((image) => {
+        values.images.forEach((image, index) => {
           if (image instanceof File) {
             formData.append('images', image);
           } else if (image.file instanceof File) {
             formData.append('images', image.file);
           } else if (image.url) {
-            formData.append('imageUrls[]', image.url);
+            formData.append(`imageUrls[${index}]`, image.url);
           }
         });
       }
@@ -108,12 +98,14 @@ const AddProperty = () => {
       
       if (response?.data) {
         toast.success('Property created successfully!');
+        resetForm();
         navigate('/properties');
       }
     } catch (error) {
       console.error('Error creating property:', error);
       toast.error(error?.response?.data?.message || 'Failed to create property');
     } finally {
+      setIsSubmitting(false);
       setSubmitting(false);
     }
   };
@@ -127,64 +119,64 @@ const AddProperty = () => {
         validationSchema={validationSchema}
         onSubmit={handleSubmit}
       >
-        {({ values, isSubmitting, handleChange, errors, touched, setFieldValue }) => (
+        {({ values, handleChange, errors, touched, setFieldValue }) => (
           <Form encType="multipart/form-data">
             <Grid container spacing={2}>
               <Grid item xs={12} sm={6}>
-                <TextField 
-                  name="title" 
-                  label="Title" 
-                  fullWidth 
-                  value={values.title} 
-                  onChange={handleChange} 
-                  error={touched.title && !!errors.title} 
-                  helperText={touched.title && errors.title} 
+                <TextField
+                  name="title"
+                  label="Title"
+                  fullWidth
+                  value={values.title}
+                  onChange={handleChange}
+                  error={touched.title && !!errors.title}
+                  helperText={touched.title && errors.title}
                 />
               </Grid>
               <Grid item xs={12} sm={6}>
-                <TextField 
-                  name="description" 
-                  label="Description" 
-                  fullWidth 
-                  multiline 
-                  minRows={3} 
-                  value={values.description} 
-                  onChange={handleChange} 
-                  error={touched.description && !!errors.description} 
-                  helperText={touched.description && errors.description} 
+                <TextField
+                  name="description"
+                  label="Description"
+                  fullWidth
+                  multiline
+                  minRows={3}
+                  value={values.description}
+                  onChange={handleChange}
+                  error={touched.description && !!errors.description}
+                  helperText={touched.description && errors.description}
                 />
               </Grid>
 
               <Grid item xs={12} sm={4}>
-                <TextField 
-                  name="price" 
-                  label="Price" 
-                  fullWidth 
-                  type="number" 
-                  value={values.price} 
+                <TextField
+                  name="price"
+                  label="Price"
+                  fullWidth
+                  type="number"
+                  value={values.price}
                   onChange={handleChange}
                   error={touched.price && !!errors.price}
                   helperText={touched.price && errors.price}
                 />
               </Grid>
               <Grid item xs={12} sm={4}>
-                <TextField 
-                  name="type" 
-                  label="Type" 
-                  fullWidth 
-                  value={values.type} 
+                <TextField
+                  name="type"
+                  label="Type"
+                  fullWidth
+                  value={values.type}
                   onChange={handleChange}
                   error={touched.type && !!errors.type}
                   helperText={touched.type && errors.type}
                 />
               </Grid>
               <Grid item xs={12} sm={4}>
-                <TextField 
-                  name="features.squareFeet" 
-                  label="Area (sqft)" 
-                  fullWidth 
-                  type="number" 
-                  value={values.features.squareFeet} 
+                <TextField
+                  name="features.squareFeet"
+                  label="Area (sqft)"
+                  fullWidth
+                  type="number"
+                  value={values.features.squareFeet}
                   onChange={handleChange}
                   error={touched.features?.squareFeet && !!errors.features?.squareFeet}
                   helperText={touched.features?.squareFeet && errors.features?.squareFeet}
@@ -192,7 +184,10 @@ const AddProperty = () => {
               </Grid>
 
               <Grid item xs={12}>
-                <DraggableMap setFieldValue={setFieldValue} />
+                <DraggableMap 
+                  setFieldValue={setFieldValue} 
+                  initialPosition={values.location.coordinates}
+                />
               </Grid>
 
               {["address", "city", "state", "zipCode", "country"].map((field) => (
@@ -210,24 +205,24 @@ const AddProperty = () => {
               ))}
 
               <Grid item xs={6} sm={3}>
-                <TextField 
-                  name="features.bedrooms" 
-                  label="Bedrooms" 
-                  fullWidth 
-                  type="number" 
-                  value={values.features.bedrooms} 
+                <TextField
+                  name="features.bedrooms"
+                  label="Bedrooms"
+                  fullWidth
+                  type="number"
+                  value={values.features.bedrooms}
                   onChange={handleChange}
                   error={touched.features?.bedrooms && !!errors.features?.bedrooms}
                   helperText={touched.features?.bedrooms && errors.features?.bedrooms}
                 />
               </Grid>
               <Grid item xs={6} sm={3}>
-                <TextField 
-                  name="features.bathrooms" 
-                  label="Bathrooms" 
-                  fullWidth 
-                  type="number" 
-                  value={values.features.bathrooms} 
+                <TextField
+                  name="features.bathrooms"
+                  label="Bathrooms"
+                  fullWidth
+                  type="number"
+                  value={values.features.bathrooms}
                   onChange={handleChange}
                   error={touched.features?.bathrooms && !!errors.features?.bathrooms}
                   helperText={touched.features?.bathrooms && errors.features?.bathrooms}
@@ -256,21 +251,24 @@ const AddProperty = () => {
               </Grid>
 
               <Grid item xs={12}>
-                <ImageUploader onUploadSuccess={(uploaded) => setFieldValue('images', uploaded)} />
+                <ImageUploader 
+                  onUploadSuccess={(uploaded) => setFieldValue('images', uploaded)} 
+                />
               </Grid>
 
               <Grid item xs={12} display="flex" gap={2}>
-                <Button 
-                  variant="outlined" 
+                <Button
+                  variant="outlined"
                   onClick={() => navigate(-1)}
                   disabled={isSubmitting}
                 >
                   Cancel
                 </Button>
-                <Button 
-                  type="submit" 
-                  variant="contained" 
+                <Button
+                  type="submit"
+                  variant="contained"
                   disabled={isSubmitting}
+                  startIcon={isSubmitting ? <CircularProgress size={20} /> : null}
                 >
                   {isSubmitting ? 'Creating...' : 'Create Property'}
                 </Button>

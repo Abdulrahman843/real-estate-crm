@@ -41,6 +41,12 @@ function App() {
       websocketService.subscribeToNotifications((notification) => {
         toast(notification.message, {
           type: notification.type || 'info',
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true
         });
       });
     }
@@ -64,10 +70,31 @@ function App() {
 
         {/* Protected Routes with Layout */}
         <Route element={<Layout />}>
-          <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-          <Route path="/messages" element={<ProtectedRoute><MessagingPage /></ProtectedRoute>} />
-          <Route path="/messages/:conversationId" element={<ProtectedRoute><MessagingPage /></ProtectedRoute>} />
+          {/* Dashboard */}
+          <Route path="/" element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } />
+
+          {/* Profile */}
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          } />
+
+          {/* Messages */}
+          <Route path="/messages" element={
+            <ProtectedRoute>
+              <MessagingPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/messages/:conversationId" element={
+            <ProtectedRoute>
+              <MessagingPage />
+            </ProtectedRoute>
+          } />
 
           {/* Property Routes */}
           <Route path="/properties" element={<ProtectedRoute><Properties /></ProtectedRoute>} />
@@ -89,11 +116,12 @@ function App() {
         position="top-right"
         autoClose={5000}
         hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
+        newestOnTop={true}
+        closeOnClick={true}
+        pauseOnFocusLoss={true}
+        draggable={true}
+        pauseOnHover={true}
+        theme="light"
       />
     </ErrorBoundary>
   );
