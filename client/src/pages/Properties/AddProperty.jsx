@@ -120,81 +120,93 @@ const AddProperty = () => {
         validationSchema={validationSchema}
         onSubmit={handleSubmit}
       >
-        {({ values, isSubmitting, handleChange, errors, touched, setFieldValue }) => (
-          <Form noValidate>
-            <Grid container spacing={2}>
-              <Grid item xs={12} sm={6}>
-                <TextField name="title" label="Title" fullWidth value={values.title} onChange={handleChange} error={touched.title && !!errors.title} helperText={touched.title && errors.title} />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField name="description" label="Description" fullWidth multiline minRows={3} value={values.description} onChange={handleChange} error={touched.description && !!errors.description} helperText={touched.description && errors.description} />
-              </Grid>
+        {({ values, isSubmitting, handleChange, errors, touched, setFieldValue }) => {
+          // Fallback image before validation
+          if (values.images.length === 0) {
+            const { address, city, state, zipCode, country } = values.location;
+            if (address && city && state && zipCode && country) {
+              const encoded = encodeURIComponent(`${address}, ${city}, ${state}, ${zipCode}, ${country}`);
+              const fallbackUrl = `https://maps.googleapis.com/maps/api/streetview?size=800x600&location=${encoded}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`;
+              setFieldValue('images', [{ url: fallbackUrl, label: 'cover' }]);
+            }
+          }
 
-              <Grid item xs={12} sm={4}>
-                <TextField name="price" label="Price" fullWidth type="number" value={values.price} onChange={handleChange} />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField name="type" label="Type" fullWidth value={values.type} onChange={handleChange} />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField name="features.squareFeet" label="Area (sqft)" fullWidth type="number" value={values.features.squareFeet} onChange={handleChange} />
-              </Grid>
-
-              <Grid item xs={12}>
-                <DraggableMap setFieldValue={setFieldValue} />
-              </Grid>
-
-              {["address", "city", "state", "zipCode", "country"].map((field) => (
-                <Grid item xs={12} sm={6} key={field}>
-                  <TextField
-                    name={`location.${field}`}
-                    label={field.charAt(0).toUpperCase() + field.slice(1)}
-                    fullWidth
-                    value={values.location[field]}
-                    onChange={handleChange}
-                  />
+          return (
+            <Form noValidate>
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <TextField name="title" label="Title" fullWidth value={values.title} onChange={handleChange} error={touched.title && !!errors.title} helperText={touched.title && errors.title} />
                 </Grid>
-              ))}
+                <Grid item xs={12} sm={6}>
+                  <TextField name="description" label="Description" fullWidth multiline minRows={3} value={values.description} onChange={handleChange} error={touched.description && !!errors.description} helperText={touched.description && errors.description} />
+                </Grid>
 
-              <Grid item xs={6} sm={3}>
-                <TextField name="features.bedrooms" label="Bedrooms" fullWidth type="number" value={values.features.bedrooms} onChange={handleChange} />
-              </Grid>
-              <Grid item xs={6} sm={3}>
-                <TextField name="features.bathrooms" label="Bathrooms" fullWidth type="number" value={values.features.bathrooms} onChange={handleChange} />
-              </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField name="price" label="Price" fullWidth type="number" value={values.price} onChange={handleChange} />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField name="type" label="Type" fullWidth value={values.type} onChange={handleChange} />
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                  <TextField name="features.squareFeet" label="Area (sqft)" fullWidth type="number" value={values.features.squareFeet} onChange={handleChange} />
+                </Grid>
 
-              <Grid item xs={12}>
-                <Typography variant="subtitle1" gutterBottom>Amenities</Typography>
-                <Stack direction="row" spacing={1} flexWrap="wrap">
-                  {amenitiesOptions.map((amenity) => (
-                    <Chip
-                      key={amenity}
-                      label={amenity}
-                      clickable
-                      color={values.features.amenities.includes(amenity) ? 'primary' : 'default'}
-                      onClick={() => {
-                        const exists = values.features.amenities.includes(amenity);
-                        const updated = exists
-                          ? values.features.amenities.filter((a) => a !== amenity)
-                          : [...values.features.amenities, amenity];
-                        setFieldValue('features.amenities', updated);
-                      }}
+                <Grid item xs={12}>
+                  <DraggableMap setFieldValue={setFieldValue} />
+                </Grid>
+
+                {["address", "city", "state", "zipCode", "country"].map((field) => (
+                  <Grid item xs={12} sm={6} key={field}>
+                    <TextField
+                      name={`location.${field}`}
+                      label={field.charAt(0).toUpperCase() + field.slice(1)}
+                      fullWidth
+                      value={values.location[field]}
+                      onChange={handleChange}
                     />
-                  ))}
-                </Stack>
-              </Grid>
+                  </Grid>
+                ))}
 
-              <Grid item xs={12}>
-                <ImageUploader onUploadSuccess={(uploaded) => setFieldValue('images', uploaded)} />
-              </Grid>
+                <Grid item xs={6} sm={3}>
+                  <TextField name="features.bedrooms" label="Bedrooms" fullWidth type="number" value={values.features.bedrooms} onChange={handleChange} />
+                </Grid>
+                <Grid item xs={6} sm={3}>
+                  <TextField name="features.bathrooms" label="Bathrooms" fullWidth type="number" value={values.features.bathrooms} onChange={handleChange} />
+                </Grid>
 
-              <Grid item xs={12} display="flex" gap={2}>
-                <Button variant="outlined" onClick={() => navigate(-1)}>Cancel</Button>
-                <Button type="submit" variant="contained" disabled={isSubmitting}>Create</Button>
+                <Grid item xs={12}>
+                  <Typography variant="subtitle1" gutterBottom>Amenities</Typography>
+                  <Stack direction="row" spacing={1} flexWrap="wrap">
+                    {amenitiesOptions.map((amenity) => (
+                      <Chip
+                        key={amenity}
+                        label={amenity}
+                        clickable
+                        color={values.features.amenities.includes(amenity) ? 'primary' : 'default'}
+                        onClick={() => {
+                          const exists = values.features.amenities.includes(amenity);
+                          const updated = exists
+                            ? values.features.amenities.filter((a) => a !== amenity)
+                            : [...values.features.amenities, amenity];
+                          setFieldValue('features.amenities', updated);
+                        }}
+                      />
+                    ))}
+                  </Stack>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <ImageUploader onUploadSuccess={(uploaded) => setFieldValue('images', uploaded)} />
+                </Grid>
+
+                <Grid item xs={12} display="flex" gap={2}>
+                  <Button variant="outlined" onClick={() => navigate(-1)}>Cancel</Button>
+                  <Button type="submit" variant="contained" disabled={isSubmitting}>Create</Button>
+                </Grid>
               </Grid>
-            </Grid>
-          </Form>
-        )}
+            </Form>
+          );
+        }}
       </Formik>
     </Box>
   );
