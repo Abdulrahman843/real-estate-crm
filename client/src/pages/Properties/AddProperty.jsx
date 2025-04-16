@@ -67,15 +67,9 @@ const AddProperty = () => {
   };
 
   const handleSubmit = async (values, { setSubmitting }) => {
-    try {
-      // Fallback to Street View image if no image uploaded
-      if (!values.images.length) {
-        const { address, city, state, zipCode, country } = values.location;
-        const encoded = encodeURIComponent(`${address}, ${city}, ${state}, ${zipCode}, ${country}`);
-        const fallbackUrl = `https://maps.googleapis.com/maps/api/streetview?size=800x600&location=${encoded}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`;
-        values.images.push({ url: fallbackUrl, label: 'cover' });
-      }
+    console.log('SUBMITTING VALUES:', values);
 
+    try {
       const formData = new FormData();
 
       formData.append('title', values.title);
@@ -127,7 +121,17 @@ const AddProperty = () => {
       <Formik
         initialValues={initialValues}
         validationSchema={validationSchema}
-        onSubmit={handleSubmit}
+        onSubmit={async (values, { setSubmitting, setFieldValue }) => {
+          // Fallback: add street view if no image selected
+          if (!values.images.length) {
+            const { address, city, state, zipCode, country } = values.location;
+            const encoded = encodeURIComponent(`${address}, ${city}, ${state}, ${zipCode}, ${country}`);
+            const fallbackUrl = `https://maps.googleapis.com/maps/api/streetview?size=800x600&location=${encoded}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`;
+            await setFieldValue('images', [{ url: fallbackUrl, label: 'cover' }]);
+          }
+
+          handleSubmit(values, { setSubmitting });
+        }}
       >
         {({ values, isSubmitting, handleChange, errors, touched, setFieldValue }) => (
           <Form noValidate>
