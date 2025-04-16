@@ -31,9 +31,9 @@ const validationSchema = Yup.object({
     country: Yup.string().required('Country is required')
   }),
   features: Yup.object().shape({
-    bedrooms: Yup.number().required('Bedrooms are required'),
-    bathrooms: Yup.number().required('Bathrooms are required'),
-    squareFeet: Yup.number().required('Area is required'),
+    bedrooms: Yup.number().required('Bedrooms are required').positive(),
+    bathrooms: Yup.number().required('Bathrooms are required').positive(),
+    squareFeet: Yup.number().required('Area is required').positive(),
     amenities: Yup.array().of(Yup.string())
   }),
   images: Yup.array().min(1, 'At least one image is required')
