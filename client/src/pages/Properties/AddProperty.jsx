@@ -1,5 +1,3 @@
-// real-estate-crm/client/src/pages/Properties/AddProperty.jsx
-
 import React from 'react';
 import { Formik, Form } from 'formik';
 import * as Yup from 'yup';
@@ -69,43 +67,52 @@ const AddProperty = () => {
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
       const formData = new FormData();
-
+      
+      // Append basic fields
       formData.append('title', values.title);
       formData.append('description', values.description);
       formData.append('price', values.price);
       formData.append('type', values.type);
       formData.append('status', values.status);
 
-      Object.entries(values.location).forEach(([key, val]) => {
-        formData.append(`location.${key}`, val);
+      // Append location fields
+      Object.keys(values.location).forEach(key => {
+        formData.append(`location[${key}]`, values.location[key]);
       });
 
-      Object.entries(values.features).forEach(([key, val]) => {
-        if (Array.isArray(val)) {
-          val.forEach(v => formData.append(`features.${key}[]`, v));
+      // Append features
+      Object.keys(values.features).forEach(key => {
+        if (key === 'amenities') {
+          values.features.amenities.forEach(amenity => {
+            formData.append('features[amenities][]', amenity);
+          });
         } else {
-          formData.append(`features.${key}`, val);
+          formData.append(`features[${key}]`, values.features[key]);
         }
       });
 
-      values.images.forEach((img) => {
-        if (img?.file) {
-          formData.append('images', img.file);
-        } else if (img?.url) {
-          formData.append('images', img.url);
-        }
-      });
+      // Append images
+      if (values.images?.length > 0) {
+        values.images.forEach((image) => {
+          if (image instanceof File) {
+            formData.append('images', image);
+          } else if (image.file instanceof File) {
+            formData.append('images', image.file);
+          } else if (image.url) {
+            formData.append('imageUrls[]', image.url);
+          }
+        });
+      }
 
       const response = await propertyService.createProperty(formData);
-      if (response?.success || response?.status === 201) {
-        toast.success('Property created successfully');
+      
+      if (response?.data) {
+        toast.success('Property created successfully!');
         navigate('/properties');
-      } else {
-        toast.error('Failed to create property');
       }
-    } catch (err) {
-      console.error(err);
-      toast.error(err?.response?.data?.message || 'Submission failed');
+    } catch (error) {
+      console.error('Error creating property:', error);
+      toast.error(error?.response?.data?.message || 'Failed to create property');
     } finally {
       setSubmitting(false);
     }
@@ -120,93 +127,157 @@ const AddProperty = () => {
         validationSchema={validationSchema}
         onSubmit={handleSubmit}
       >
-        {({ values, isSubmitting, handleChange, errors, touched, setFieldValue }) => {
-          // Fallback image before validation
-          if (values.images.length === 0) {
-            const { address, city, state, zipCode, country } = values.location;
-            if (address && city && state && zipCode && country) {
-              const encoded = encodeURIComponent(`${address}, ${city}, ${state}, ${zipCode}, ${country}`);
-              const fallbackUrl = `https://maps.googleapis.com/maps/api/streetview?size=800x600&location=${encoded}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`;
-              setFieldValue('images', [{ url: fallbackUrl, label: 'cover' }]);
-            }
-          }
-
-          return (
-            <Form noValidate>
-              <Grid container spacing={2}>
-                <Grid item xs={12} sm={6}>
-                  <TextField name="title" label="Title" fullWidth value={values.title} onChange={handleChange} error={touched.title && !!errors.title} helperText={touched.title && errors.title} />
-                </Grid>
-                <Grid item xs={12} sm={6}>
-                  <TextField name="description" label="Description" fullWidth multiline minRows={3} value={values.description} onChange={handleChange} error={touched.description && !!errors.description} helperText={touched.description && errors.description} />
-                </Grid>
-
-                <Grid item xs={12} sm={4}>
-                  <TextField name="price" label="Price" fullWidth type="number" value={values.price} onChange={handleChange} />
-                </Grid>
-                <Grid item xs={12} sm={4}>
-                  <TextField name="type" label="Type" fullWidth value={values.type} onChange={handleChange} />
-                </Grid>
-                <Grid item xs={12} sm={4}>
-                  <TextField name="features.squareFeet" label="Area (sqft)" fullWidth type="number" value={values.features.squareFeet} onChange={handleChange} />
-                </Grid>
-
-                <Grid item xs={12}>
-                  <DraggableMap setFieldValue={setFieldValue} />
-                </Grid>
-
-                {["address", "city", "state", "zipCode", "country"].map((field) => (
-                  <Grid item xs={12} sm={6} key={field}>
-                    <TextField
-                      name={`location.${field}`}
-                      label={field.charAt(0).toUpperCase() + field.slice(1)}
-                      fullWidth
-                      value={values.location[field]}
-                      onChange={handleChange}
-                    />
-                  </Grid>
-                ))}
-
-                <Grid item xs={6} sm={3}>
-                  <TextField name="features.bedrooms" label="Bedrooms" fullWidth type="number" value={values.features.bedrooms} onChange={handleChange} />
-                </Grid>
-                <Grid item xs={6} sm={3}>
-                  <TextField name="features.bathrooms" label="Bathrooms" fullWidth type="number" value={values.features.bathrooms} onChange={handleChange} />
-                </Grid>
-
-                <Grid item xs={12}>
-                  <Typography variant="subtitle1" gutterBottom>Amenities</Typography>
-                  <Stack direction="row" spacing={1} flexWrap="wrap">
-                    {amenitiesOptions.map((amenity) => (
-                      <Chip
-                        key={amenity}
-                        label={amenity}
-                        clickable
-                        color={values.features.amenities.includes(amenity) ? 'primary' : 'default'}
-                        onClick={() => {
-                          const exists = values.features.amenities.includes(amenity);
-                          const updated = exists
-                            ? values.features.amenities.filter((a) => a !== amenity)
-                            : [...values.features.amenities, amenity];
-                          setFieldValue('features.amenities', updated);
-                        }}
-                      />
-                    ))}
-                  </Stack>
-                </Grid>
-
-                <Grid item xs={12}>
-                  <ImageUploader onUploadSuccess={(uploaded) => setFieldValue('images', uploaded)} />
-                </Grid>
-
-                <Grid item xs={12} display="flex" gap={2}>
-                  <Button variant="outlined" onClick={() => navigate(-1)}>Cancel</Button>
-                  <Button type="submit" variant="contained" disabled={isSubmitting}>Create</Button>
-                </Grid>
+        {({ values, isSubmitting, handleChange, errors, touched, setFieldValue }) => (
+          <Form encType="multipart/form-data">
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6}>
+                <TextField 
+                  name="title" 
+                  label="Title" 
+                  fullWidth 
+                  value={values.title} 
+                  onChange={handleChange} 
+                  error={touched.title && !!errors.title} 
+                  helperText={touched.title && errors.title} 
+                />
               </Grid>
-            </Form>
-          );
-        }}
+              <Grid item xs={12} sm={6}>
+                <TextField 
+                  name="description" 
+                  label="Description" 
+                  fullWidth 
+                  multiline 
+                  minRows={3} 
+                  value={values.description} 
+                  onChange={handleChange} 
+                  error={touched.description && !!errors.description} 
+                  helperText={touched.description && errors.description} 
+                />
+              </Grid>
+
+              <Grid item xs={12} sm={4}>
+                <TextField 
+                  name="price" 
+                  label="Price" 
+                  fullWidth 
+                  type="number" 
+                  value={values.price} 
+                  onChange={handleChange}
+                  error={touched.price && !!errors.price}
+                  helperText={touched.price && errors.price}
+                />
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <TextField 
+                  name="type" 
+                  label="Type" 
+                  fullWidth 
+                  value={values.type} 
+                  onChange={handleChange}
+                  error={touched.type && !!errors.type}
+                  helperText={touched.type && errors.type}
+                />
+              </Grid>
+              <Grid item xs={12} sm={4}>
+                <TextField 
+                  name="features.squareFeet" 
+                  label="Area (sqft)" 
+                  fullWidth 
+                  type="number" 
+                  value={values.features.squareFeet} 
+                  onChange={handleChange}
+                  error={touched.features?.squareFeet && !!errors.features?.squareFeet}
+                  helperText={touched.features?.squareFeet && errors.features?.squareFeet}
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <DraggableMap setFieldValue={setFieldValue} />
+              </Grid>
+
+              {["address", "city", "state", "zipCode", "country"].map((field) => (
+                <Grid item xs={12} sm={6} key={field}>
+                  <TextField
+                    name={`location.${field}`}
+                    label={field.charAt(0).toUpperCase() + field.slice(1)}
+                    fullWidth
+                    value={values.location[field]}
+                    onChange={handleChange}
+                    error={touched.location?.[field] && !!errors.location?.[field]}
+                    helperText={touched.location?.[field] && errors.location?.[field]}
+                  />
+                </Grid>
+              ))}
+
+              <Grid item xs={6} sm={3}>
+                <TextField 
+                  name="features.bedrooms" 
+                  label="Bedrooms" 
+                  fullWidth 
+                  type="number" 
+                  value={values.features.bedrooms} 
+                  onChange={handleChange}
+                  error={touched.features?.bedrooms && !!errors.features?.bedrooms}
+                  helperText={touched.features?.bedrooms && errors.features?.bedrooms}
+                />
+              </Grid>
+              <Grid item xs={6} sm={3}>
+                <TextField 
+                  name="features.bathrooms" 
+                  label="Bathrooms" 
+                  fullWidth 
+                  type="number" 
+                  value={values.features.bathrooms} 
+                  onChange={handleChange}
+                  error={touched.features?.bathrooms && !!errors.features?.bathrooms}
+                  helperText={touched.features?.bathrooms && errors.features?.bathrooms}
+                />
+              </Grid>
+
+              <Grid item xs={12}>
+                <Typography variant="subtitle1" gutterBottom>Amenities</Typography>
+                <Stack direction="row" spacing={1} flexWrap="wrap" gap={1}>
+                  {amenitiesOptions.map((amenity) => (
+                    <Chip
+                      key={amenity}
+                      label={amenity}
+                      clickable
+                      color={values.features.amenities.includes(amenity) ? 'primary' : 'default'}
+                      onClick={() => {
+                        const exists = values.features.amenities.includes(amenity);
+                        const updated = exists
+                          ? values.features.amenities.filter((a) => a !== amenity)
+                          : [...values.features.amenities, amenity];
+                        setFieldValue('features.amenities', updated);
+                      }}
+                    />
+                  ))}
+                </Stack>
+              </Grid>
+
+              <Grid item xs={12}>
+                <ImageUploader onUploadSuccess={(uploaded) => setFieldValue('images', uploaded)} />
+              </Grid>
+
+              <Grid item xs={12} display="flex" gap={2}>
+                <Button 
+                  variant="outlined" 
+                  onClick={() => navigate(-1)}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  type="submit" 
+                  variant="contained" 
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Creating...' : 'Create Property'}
+                </Button>
+              </Grid>
+            </Grid>
+          </Form>
+        )}
       </Formik>
     </Box>
   );
