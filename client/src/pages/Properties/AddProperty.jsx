@@ -68,30 +68,40 @@ const AddProperty = () => {
 
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
+      // Fallback to Street View image if no image uploaded
       if (!values.images.length) {
         const { address, city, state, zipCode, country } = values.location;
-        const fullAddress = `${address}, ${city}, ${state}, ${zipCode}, ${country}`;
-        const encoded = encodeURIComponent(fullAddress);
+        const encoded = encodeURIComponent(`${address}, ${city}, ${state}, ${zipCode}, ${country}`);
         const fallbackUrl = `https://maps.googleapis.com/maps/api/streetview?size=800x600&location=${encoded}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`;
         values.images.push({ url: fallbackUrl, label: 'cover' });
       }
 
       const formData = new FormData();
-      Object.entries(values).forEach(([key, value]) => {
-        if (key === 'images') {
-          value.forEach((img) => {
-            if (typeof img === 'string') {
-              formData.append('images', img);
-            } else {
-              formData.append('images', img.file || img);
-            }
-          });
-        } else if (typeof value === 'object' && !Array.isArray(value)) {
-          Object.entries(value).forEach(([subKey, subVal]) =>
-            formData.append(`${key}.${subKey}`, subVal)
-          );
+
+      formData.append('title', values.title);
+      formData.append('description', values.description);
+      formData.append('price', values.price);
+      formData.append('type', values.type);
+      formData.append('status', values.status);
+
+      // Flatten nested objects
+      Object.entries(values.location).forEach(([key, val]) => {
+        formData.append(`location.${key}`, val);
+      });
+
+      Object.entries(values.features).forEach(([key, val]) => {
+        if (Array.isArray(val)) {
+          val.forEach(v => formData.append(`features.${key}[]`, v));
         } else {
-          formData.append(key, value);
+          formData.append(`features.${key}`, val);
+        }
+      });
+
+      values.images.forEach((img) => {
+        if (img?.file) {
+          formData.append('images', img.file);
+        } else if (img?.url) {
+          formData.append('images', img.url);
         }
       });
 
@@ -103,7 +113,8 @@ const AddProperty = () => {
         toast.error('Failed to create property');
       }
     } catch (err) {
-      toast.error(err.message || 'Submission failed');
+      console.error(err);
+      toast.error(err?.response?.data?.message || 'Submission failed');
     } finally {
       setSubmitting(false);
     }
