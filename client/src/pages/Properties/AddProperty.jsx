@@ -67,8 +67,6 @@ const AddProperty = () => {
   };
 
   const handleSubmit = async (values, { setSubmitting }) => {
-    console.log('SUBMITTING VALUES:', values);
-
     try {
       const formData = new FormData();
 
@@ -78,7 +76,6 @@ const AddProperty = () => {
       formData.append('type', values.type);
       formData.append('status', values.status);
 
-      // Flatten nested objects
       Object.entries(values.location).forEach(([key, val]) => {
         formData.append(`location.${key}`, val);
       });
@@ -121,17 +118,7 @@ const AddProperty = () => {
       <Formik
         initialValues={initialValues}
         validationSchema={validationSchema}
-        onSubmit={async (values, { setSubmitting, setFieldValue }) => {
-          // Fallback: add street view if no image selected
-          if (!values.images.length) {
-            const { address, city, state, zipCode, country } = values.location;
-            const encoded = encodeURIComponent(`${address}, ${city}, ${state}, ${zipCode}, ${country}`);
-            const fallbackUrl = `https://maps.googleapis.com/maps/api/streetview?size=800x600&location=${encoded}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`;
-            await setFieldValue('images', [{ url: fallbackUrl, label: 'cover' }]);
-          }
-
-          handleSubmit(values, { setSubmitting });
-        }}
+        onSubmit={handleSubmit}
       >
         {({ values, isSubmitting, handleChange, errors, touched, setFieldValue }) => (
           <Form noValidate>

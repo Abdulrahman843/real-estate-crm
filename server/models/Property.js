@@ -20,8 +20,8 @@ const propertySchema = new mongoose.Schema({
         zipCode: { type: String, required: true },
         country: { type: String, required: true },
         coordinates: {
-            lat: { type: Number },
-            lng: { type: Number }
+            lat: Number,
+            lng: Number
         }
     },
     features: {
