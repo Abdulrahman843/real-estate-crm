@@ -52,7 +52,9 @@ const AddProperty = () => {
       city: '',
       state: '',
       zipCode: '',
-      country: ''
+      country: '',
+      lat: 0,
+      lng: 0
     },
     features: {
       bedrooms: '',
@@ -66,24 +68,24 @@ const AddProperty = () => {
 
   const handleSubmit = async (values, { setSubmitting }) => {
     try {
-      // Fallback to Street View image if no cover image uploaded
-      if (values.images.length === 0) {
+      // Fallback to Street View image if no image uploaded
+      if (!values.images.length) {
         const { address, city, state, zipCode, country } = values.location;
         const fullAddress = `${address}, ${city}, ${state}, ${zipCode}, ${country}`;
         const encoded = encodeURIComponent(fullAddress);
-        const streetViewUrl = `https://maps.googleapis.com/maps/api/streetview?size=800x600&location=${encoded}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`;
-
-        values.images.push({
-          url: streetViewUrl,
-          label: 'cover'
-        });
+        const fallbackUrl = `https://maps.googleapis.com/maps/api/streetview?size=800x600&location=${encoded}&key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY}`;
+        values.images.push({ url: fallbackUrl, label: 'cover' });
       }
 
-      await propertyService.createProperty(values);
-      toast.success('Property created successfully');
-      navigate('/properties');
+      const response = await propertyService.createProperty(values);
+      if (response?.success || response?.status === 201) {
+        toast.success('Property created successfully');
+        navigate('/properties');
+      } else {
+        toast.error('Failed to create property');
+      }
     } catch (err) {
-      toast.error(err.message);
+      toast.error(err.message || 'Submission failed');
     } finally {
       setSubmitting(false);
     }
@@ -160,51 +162,17 @@ const AddProperty = () => {
                 <DraggableMap setFieldValue={setFieldValue} />
               </Grid>
 
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  name="location.address"
-                  label="Address"
-                  fullWidth
-                  value={values.location.address}
-                  onChange={handleChange}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TextField
-                  name="location.city"
-                  label="City"
-                  fullWidth
-                  value={values.location.city}
-                  onChange={handleChange}
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  name="location.state"
-                  label="State"
-                  fullWidth
-                  value={values.location.state}
-                  onChange={handleChange}
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  name="location.zipCode"
-                  label="ZIP Code"
-                  fullWidth
-                  value={values.location.zipCode}
-                  onChange={handleChange}
-                />
-              </Grid>
-              <Grid item xs={12} sm={4}>
-                <TextField
-                  name="location.country"
-                  label="Country"
-                  fullWidth
-                  value={values.location.country}
-                  onChange={handleChange}
-                />
-              </Grid>
+              {["address", "city", "state", "zipCode", "country"].map((field) => (
+                <Grid item xs={12} sm={6} key={field}>
+                  <TextField
+                    name={`location.${field}`}
+                    label={field.charAt(0).toUpperCase() + field.slice(1)}
+                    fullWidth
+                    value={values.location[field]}
+                    onChange={handleChange}
+                  />
+                </Grid>
+              ))}
 
               <Grid item xs={6} sm={3}>
                 <TextField
