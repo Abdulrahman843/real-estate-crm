@@ -1,3 +1,4 @@
+//real-estate-crm\client\src\pages\Properties\AddProperty.jsx
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {

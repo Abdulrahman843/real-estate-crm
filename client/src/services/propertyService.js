@@ -7,12 +7,14 @@ const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT) || 10000;
 // Axios instances
 const propertyApi = axios.create({
   baseURL: `${BASE_URL}/api/properties`,
-  timeout: API_TIMEOUT
+  timeout: API_TIMEOUT,
+  withCredentials: true
 });
 
 const dashboardApi = axios.create({
   baseURL: `${BASE_URL}/api/dashboard`,
-  timeout: API_TIMEOUT
+  timeout: API_TIMEOUT,
+  withCredentials: true
 });
 
 // Token interceptors
