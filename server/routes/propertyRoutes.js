@@ -1,3 +1,4 @@
+// routes/propertyRoutes.js
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
@@ -22,8 +23,16 @@ const {
   trackPropertyView
 } = require('../controllers/propertyController');
 
-const { protect, authorize, validateRequest } = require('../middleware/authMiddleware');
-const { uploadMiddleware, handleUploadError } = require('../middleware/uploadMiddleware');
+const {
+  protect,
+  authorize,
+  validateRequest
+} = require('../middleware/authMiddleware');
+
+const {
+  uploadMiddleware,
+  handleUploadError
+} = require('../middleware/uploadMiddleware');
 
 // ------------------------
 // Joi Validation Schemas
@@ -32,9 +41,10 @@ const { uploadMiddleware, handleUploadError } = require('../middleware/uploadMid
 const propertySchema = {
   title: Joi.string().min(3).max(100),
   description: Joi.string().min(10),
-  price: Joi.number().min(0),
-  type: Joi.string().valid('apartment', 'house', 'condo', 'villa', 'office'),
-  status: Joi.string().valid('available', 'sold', 'pending', 'reserved'),
+  price: Joi.number().min(1),
+  type: Joi.string().valid('house', 'apartment', 'condo', 'villa', 'land'),
+  propertyType: Joi.string().valid('house', 'apartment', 'condo', 'villa', 'land'),
+  status: Joi.string().valid('available', 'sold', 'pending', 'reserved', 'rented'),
   location: Joi.object({
     address: Joi.string(),
     city: Joi.string(),
@@ -45,16 +55,20 @@ const propertySchema = {
     lng: Joi.number()
   }),
   features: Joi.object({
-    bedrooms: Joi.number().min(0),
-    bathrooms: Joi.number().min(0),
+    bedrooms: Joi.number().min(1),
+    bathrooms: Joi.number().min(1),
+    area: Joi.number().min(0),
     squareFeet: Joi.number().min(0),
     yearBuilt: Joi.number(),
-    parking: Joi.number(),
     amenities: Joi.alternatives().try(
       Joi.array().items(Joi.string()),
       Joi.string()
     )
-  })
+  }),
+  amenities: Joi.alternatives().try(
+    Joi.array().items(Joi.string()),
+    Joi.string()
+  )
 };
 
 const createSchema = Joi.object(propertySchema).required();
@@ -91,13 +105,19 @@ router.post(
 router.put(
   '/:id',
   authorize('admin', 'agent'),
+  uploadMiddleware.any(),
+  handleUploadError,
   validateRequest(updateSchema),
   updateProperty
 );
 
-router.delete('/:id', authorize('admin', 'agent'), deleteProperty);
+router.delete(
+  '/:id',
+  authorize('admin', 'agent'),
+  deleteProperty
+);
 
-// Property status
+// Property Status Update
 router.patch(
   '/:id/status',
   authorize('admin', 'agent'),
@@ -109,29 +129,29 @@ router.patch(
 router.post('/:id/favorite', toggleFavorite);
 router.get('/favorites/me', getFavorites);
 
-// Reviews & Reports
+// Reviews and Reports
 router.post('/:id/reviews', addPropertyReview);
 router.post('/:id/report', reportProperty);
 
-// Analytics & Views
+// Analytics and Tracking
 router.get('/:id/analytics', authorize('admin', 'agent'), getPropertyAnalytics);
 router.post('/:id/track', trackPropertyView);
 
 // Image Uploads
-router.post(
-  '/:id/images',
-  authorize('admin', 'agent'),
-  uploadMiddleware.array('images', 10),
-  handleUploadError,
-  uploadPropertyGallery
-);
-
 router.post(
   '/:id/upload-image',
   authorize('admin', 'agent'),
   uploadMiddleware.single('image'),
   handleUploadError,
   uploadPropertyImage
+);
+
+router.post(
+  '/:id/images',
+  authorize('admin', 'agent'),
+  uploadMiddleware.array('images', 10),
+  handleUploadError,
+  uploadPropertyGallery
 );
 
 router.delete(

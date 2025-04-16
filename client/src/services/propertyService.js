@@ -51,16 +51,16 @@ export const propertyService = {
     return response.data;
   },
 
-  createProperty: async (data) => {
-    const config = data instanceof FormData ? {
+  createProperty: async (formData) => {
+    const config = {
       headers: {
         'Content-Type': 'multipart/form-data',
         'Accept': 'application/json'
       }
-    } : {};
+    };
 
-    console.log('Creating property:', data);
-    const response = await propertyApi.post('', data, config);
+    console.log('Creating property with data:', formData);
+    const response = await propertyApi.post('/', formData, config);
     console.log('Property created:', response.data);
     return response;
   },
@@ -114,7 +114,7 @@ export const propertyService = {
   uploadImages: async (propertyId, files) => {
     const formData = new FormData();
     files.forEach(file => formData.append('images', file));
-    
+
     const response = await propertyApi.post(`/${propertyId}/images`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',

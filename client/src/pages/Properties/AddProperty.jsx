@@ -21,8 +21,8 @@ const AddProperty = () => {
     propertyType: '',
     status: 'available',
     features: {
-      bedrooms: '',
-      bathrooms: '',
+      bedrooms: 1,
+      bathrooms: 1,
       area: '',
       yearBuilt: '',
     },
@@ -37,11 +37,12 @@ const AddProperty = () => {
   });
 
   const propertyTypes = ['House', 'Apartment', 'Condo', 'Villa', 'Land'];
+  const priceOptions = ['50000', '100000', '150000', '200000', '250000', '300000+'];
   const availableAmenities = ['Pool', 'Garage', 'Garden', 'Balcony', 'Security', 'Gym', 'Parking'];
 
   const validateForm = () => {
     const newErrors = {};
-    
+
     if (!formData.title.trim()) newErrors.title = 'Title is required';
     if (!formData.price) newErrors.price = 'Price is required';
     if (!formData.propertyType) newErrors.propertyType = 'Property type is required';
@@ -101,7 +102,7 @@ const AddProperty = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       toast.error('Please fill in all required fields');
       return;
@@ -117,10 +118,12 @@ const AddProperty = () => {
       formDataToSend.append('data', JSON.stringify(formData));
 
       const response = await propertyService.createProperty(formDataToSend);
-      
-      if (response.data) {
+
+      if (response.data?.success || response.status === 201) {
         toast.success('Property created successfully');
         navigate('/properties');
+      } else {
+        toast.error('Property creation failed');
       }
     } catch (error) {
       console.error('Error creating property:', error);
@@ -141,10 +144,6 @@ const AddProperty = () => {
         )}
         <Paper component="form" onSubmit={handleSubmit} sx={{ p: 3, mt: 3 }}>
           <Grid container spacing={3}>
-            {/* Basic Information */}
-            <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom>Basic Information</Typography>
-            </Grid>
             <Grid item xs={12} md={6}>
               <TextField
                 fullWidth
@@ -158,21 +157,21 @@ const AddProperty = () => {
               />
             </Grid>
             <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                required
-                type="number"
-                label="Price"
-                name="price"
-                value={formData.price}
-                onChange={handleInputChange}
-                error={!!errors.price}
-                helperText={errors.price}
-                InputProps={{
-                  startAdornment: <InputAdornment position="start">£</InputAdornment>,
-                }}
-              />
+              <FormControl fullWidth required error={!!errors.price}>
+                <InputLabel>Price</InputLabel>
+                <Select
+                  name="price"
+                  value={formData.price}
+                  onChange={handleInputChange}
+                  label="Price"
+                >
+                  {priceOptions.map(price => (
+                    <MenuItem key={price} value={price}>£{price}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
             </Grid>
+
             <Grid item xs={12}>
               <TextField
                 fullWidth
@@ -185,7 +184,6 @@ const AddProperty = () => {
               />
             </Grid>
 
-            {/* Property Type and Status */}
             <Grid item xs={12} md={6}>
               <FormControl fullWidth required error={!!errors.propertyType}>
                 <InputLabel>Property Type</InputLabel>
@@ -201,6 +199,7 @@ const AddProperty = () => {
                 </Select>
               </FormControl>
             </Grid>
+
             <Grid item xs={12} md={6}>
               <FormControl fullWidth required>
                 <InputLabel>Status</InputLabel>
@@ -217,14 +216,11 @@ const AddProperty = () => {
               </FormControl>
             </Grid>
 
-            {/* Features */}
-            <Grid item xs={12}>
-              <Typography variant="h6" gutterBottom>Features</Typography>
-            </Grid>
             <Grid item xs={12} md={3}>
               <TextField
                 fullWidth
                 type="number"
+                inputProps={{ min: 1 }}
                 label="Bedrooms"
                 name="features.bedrooms"
                 value={formData.features.bedrooms}
@@ -235,6 +231,7 @@ const AddProperty = () => {
               <TextField
                 fullWidth
                 type="number"
+                inputProps={{ min: 1 }}
                 label="Bathrooms"
                 name="features.bathrooms"
                 value={formData.features.bathrooms}

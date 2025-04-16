@@ -6,6 +6,167 @@ const { Readable } = require('stream');
 const sharp = require('sharp');
 const getStreetViewImage = require('../utils/streetView');
 
+const parseJSONBody = (body) => {
+  try {
+    return typeof body === 'string' ? JSON.parse(body) : body;
+  } catch (err) {
+    return {};
+  }
+};
+
+const uploadImageToCloudinary = async (fileBuffer) => {
+  const processedBuffer = await sharp(fileBuffer)
+    .resize(1200, 800, { fit: 'inside' })
+    .jpeg({ quality: 80 })
+    .toBuffer();
+
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream({
+      folder: 'properties',
+      resource_type: 'image'
+    }, (error, result) => {
+      if (error) reject(error);
+      else resolve(result);
+    });
+    Readable.from(processedBuffer).pipe(stream);
+  });
+};
+
+const createProperty = async (req, res) => {
+  try {
+    const data = parseJSONBody(req.body.data);
+    const images = req.files || [];
+
+    const uploadedImages = [];
+
+    for (const file of images) {
+      const result = await uploadImageToCloudinary(file.buffer);
+      uploadedImages.push({
+        url: result.secure_url,
+        public_id: result.public_id,
+        thumbnail: result.secure_url.replace('/upload/', '/upload/w_300,h_200,c_fill/'),
+        label: uploadedImages.length === 0 ? 'cover' : 'gallery'
+      });
+    }
+
+    if (!uploadedImages.length) {
+      const fullAddress = `${data.location?.address || ''}, ${data.location?.city || ''}, ${data.location?.state || ''}, ${data.location?.zipCode || ''}, ${data.location?.country || ''}`;
+      const streetImage = getStreetViewImage(fullAddress);
+      uploadedImages.push({
+        url: streetImage,
+        public_id: 'street_view_placeholder',
+        thumbnail: streetImage.replace('800x600', '300x200'),
+        label: 'cover'
+      });
+    }
+
+    const newProperty = new Property({
+      title: data.title,
+      description: data.description,
+      price: parseFloat(data.price),
+      type: data.propertyType || data.type,
+      status: data.status || 'available',
+      agent: req.user._id,
+      location: {
+        address: data.location?.address,
+        city: data.location?.city,
+        state: data.location?.state,
+        zipCode: data.location?.zipCode,
+        country: data.location?.country,
+        coordinates: {
+          lat: parseFloat(data.location?.lat || 0),
+          lng: parseFloat(data.location?.lng || 0)
+        }
+      },
+      features: {
+        bedrooms: parseInt(data.features?.bedrooms || 0),
+        bathrooms: parseInt(data.features?.bathrooms || 0),
+        squareFeet: parseInt(data.features?.area || data.features?.squareFeet || 0),
+        yearBuilt: parseInt(data.features?.yearBuilt || 0),
+        amenities: Array.isArray(data.amenities) ? data.amenities : []
+      },
+      amenities: Array.isArray(data.amenities) ? data.amenities : [],
+      images: uploadedImages
+    });
+
+    const saved = await newProperty.save();
+    res.status(201).json(saved);
+  } catch (error) {
+    console.error('[Create Property Error]', error);
+    res.status(400).json({ message: error.message });
+  }
+};
+
+const updateProperty = async (req, res) => {
+  try {
+    const property = await Property.findById(req.params.id);
+    if (!property) return res.status(404).json({ message: 'Property not found' });
+    if (property.agent.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized' });
+    }
+
+    const data = parseJSONBody(req.body.data);
+    const images = req.files || [];
+
+    const uploadedImages = [];
+
+    for (const file of images) {
+      const result = await uploadImageToCloudinary(file.buffer);
+      uploadedImages.push({
+        url: result.secure_url,
+        public_id: result.public_id,
+        thumbnail: result.secure_url.replace('/upload/', '/upload/w_300,h_200,c_fill/'),
+        label: uploadedImages.length === 0 ? 'cover' : 'gallery'
+      });
+    }
+
+    if (!uploadedImages.length && (!property.images || !property.images.length)) {
+      const fullAddress = `${data.location?.address || ''}, ${data.location?.city || ''}, ${data.location?.state || ''}, ${data.location?.zipCode || ''}, ${data.location?.country || ''}`;
+      const streetImage = getStreetViewImage(fullAddress);
+      uploadedImages.push({
+        url: streetImage,
+        public_id: 'street_view_placeholder',
+        thumbnail: streetImage.replace('800x600', '300x200'),
+        label: 'cover'
+      });
+    }
+
+    property.set({
+      title: data.title,
+      description: data.description,
+      price: parseFloat(data.price),
+      type: data.propertyType || data.type,
+      status: data.status || 'available',
+      location: {
+        address: data.location?.address,
+        city: data.location?.city,
+        state: data.location?.state,
+        zipCode: data.location?.zipCode,
+        country: data.location?.country,
+        coordinates: {
+          lat: parseFloat(data.location?.lat || 0),
+          lng: parseFloat(data.location?.lng || 0)
+        }
+      },
+      features: {
+        bedrooms: parseInt(data.features?.bedrooms || 0),
+        bathrooms: parseInt(data.features?.bathrooms || 0),
+        squareFeet: parseInt(data.features?.area || data.features?.squareFeet || 0),
+        yearBuilt: parseInt(data.features?.yearBuilt || 0),
+        amenities: Array.isArray(data.amenities) ? data.amenities : []
+      },
+      amenities: Array.isArray(data.amenities) ? data.amenities : [],
+      images: uploadedImages.length > 0 ? uploadedImages : property.images,
+      updatedAt: new Date()
+    });
+
+    await property.save();
+    res.json(property);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+};
+
 const getProperties = async (req, res) => {
   try {
     const {
@@ -45,16 +206,9 @@ const getProperties = async (req, res) => {
 
     const total = await Property.countDocuments(query);
 
-    res.json({
-      properties,
-      pagination: {
-        total,
-        page: parseInt(page),
-        pages: Math.ceil(total / parseInt(limit))
-      }
-    });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.json({ properties, pagination: { total, page: parseInt(page), pages: Math.ceil(total / limit) } });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
@@ -63,140 +217,37 @@ const getProperty = async (req, res) => {
     const property = await Property.findById(req.params.id).populate('agent', 'name email');
     if (!property) return res.status(404).json({ message: 'Property not found' });
     res.json(property);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-const createProperty = async (req, res) => {
-  try {
-    const data = req.body;
-
-    const fullAddress = `${data['location.address'] || ''}, ${data['location.city'] || ''}, ${data['location.state'] || ''}, ${data['location.zipCode'] || ''}, ${data['location.country'] || ''}`;
-    const imageUrl = getStreetViewImage(fullAddress);
-
-    const newProperty = new Property({
-      title: data.title,
-      description: data.description,
-      price: parseFloat(data.price),
-      type: data.type,
-      status: data.status || 'available',
-      agent: req.user._id,
-      location: {
-        address: data['location.address'],
-        city: data['location.city'],
-        state: data['location.state'],
-        zipCode: data['location.zipCode'],
-        country: data['location.country'],
-        lat: parseFloat(data['location.lat'] || 0),
-        lng: parseFloat(data['location.lng'] || 0)
-      },
-      features: {
-        bedrooms: parseInt(data['features.bedrooms']),
-        bathrooms: parseInt(data['features.bathrooms']),
-        squareFeet: parseInt(data['features.squareFeet']),
-        amenities: Array.isArray(data['features.amenities'])
-          ? data['features.amenities']
-          : typeof data['features.amenities'] === 'string'
-          ? data['features.amenities'].split(',')
-          : []
-      },
-      images: [
-        {
-          url: imageUrl,
-          public_id: 'google_street_view',
-          thumbnail: imageUrl.replace('800x600', '300x200')
-        }
-      ]
-    });
-
-    const saved = await newProperty.save();
-    res.status(201).json(saved);
-  } catch (error) {
-    console.error('[Create Property Error]', error);
-    res.status(400).json({ message: error.message });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
 const getAgentProperties = async (req, res) => {
   try {
-    const agentId = req.params.agentId;
-    const properties = await Property.find({ agent: agentId })
+    const properties = await Property.find({ agent: req.params.agentId })
       .populate('agent', 'name email')
       .sort({ createdAt: -1 });
     res.json(properties);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
 const updatePropertyStatus = async (req, res) => {
   try {
-    const { status } = req.body;
     const property = await Property.findById(req.params.id);
     if (!property) return res.status(404).json({ message: 'Property not found' });
     if (property.agent.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
       return res.status(403).json({ message: 'Not authorized' });
     }
-    property.status = status;
+    property.status = req.body.status;
     property.updatedAt = new Date();
     await property.save();
-    res.json({ message: 'Property status updated', property });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.json({ message: 'Status updated', property });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
   }
 };
-
-const updateProperty = async (req, res) => {
-  try {
-    const property = await Property.findById(req.params.id);
-    if (!property) return res.status(404).json({ message: 'Property not found' });
-    if (property.agent.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Not authorized' });
-    }
-
-    const data = req.body;
-    const fullAddress = `${data['location.address'] || ''}, ${data['location.city'] || ''}, ${data['location.state'] || ''}, ${data['location.zipCode'] || ''}, ${data['location.country'] || ''}`;
-    const imageUrl = getStreetViewImage(fullAddress);
-
-    property.set({
-      title: data.title,
-      description: data.description,
-      price: parseFloat(data.price),
-      type: data.type,
-      status: data.status || 'available',
-      location: {
-        address: data['location.address'],
-        city: data['location.city'],
-        state: data['location.state'],
-        zipCode: data['location.zipCode'],
-        country: data['location.country'],
-        lat: parseFloat(data['location.lat'] || 0),
-        lng: parseFloat(data['location.lng'] || 0),
-      },
-      features: {
-        bedrooms: parseInt(data['features.bedrooms']),
-        bathrooms: parseInt(data['features.bathrooms']),
-        squareFeet: parseInt(data['features.squareFeet']),
-        amenities: Array.isArray(data['features.amenities']) ? data['features.amenities'] : typeof data['features.amenities'] === 'string' ? data['features.amenities'].split(',') : []
-      },
-      images: [
-        {
-          url: imageUrl,
-          public_id: 'google_street_view',
-          thumbnail: imageUrl.replace('800x600', '300x200')
-        }
-      ],
-      updatedAt: new Date()
-    });
-
-    await property.save();
-    res.json(property);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-};
-
 
 const deleteProperty = async (req, res) => {
   try {
@@ -206,9 +257,9 @@ const deleteProperty = async (req, res) => {
       return res.status(403).json({ message: 'Not authorized' });
     }
     await property.remove();
-    res.json({ message: 'Property deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.json({ message: 'Deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
@@ -220,21 +271,7 @@ const uploadPropertyImage = async (req, res) => {
     const file = req.file;
     if (!file) return res.status(400).json({ message: 'No file uploaded' });
 
-    const processedBuffer = await sharp(file.buffer)
-      .resize(1200, 800, { fit: 'inside' })
-      .jpeg({ quality: 80 })
-      .toBuffer();
-
-    const result = await new Promise((resolve, reject) => {
-      const stream = cloudinary.uploader.upload_stream({
-        folder: 'properties',
-        resource_type: 'image'
-      }, (error, result) => {
-        if (error) reject(error);
-        else resolve(result);
-      });
-      Readable.from(processedBuffer).pipe(stream);
-    });
+    const result = await uploadImageToCloudinary(file.buffer);
 
     const image = {
       url: result.secure_url,
@@ -244,10 +281,8 @@ const uploadPropertyImage = async (req, res) => {
 
     property.images.push(image);
     await property.save();
-
     res.json(property);
   } catch (err) {
-    console.error(err);
     res.status(500).json({ message: 'Image upload failed' });
   }
 };
@@ -257,54 +292,28 @@ const uploadPropertyGallery = async (req, res) => {
     const property = await Property.findById(req.params.id);
     if (!property) return res.status(404).json({ message: 'Property not found' });
 
-    const uploadPromises = req.files.map(file => {
-      return new Promise(async (resolve, reject) => {
-        try {
-          const processedBuffer = await sharp(file.buffer)
-            .resize(1200, 800, { fit: 'inside', withoutEnlargement: true })
-            .jpeg({ quality: 80 })
-            .toBuffer();
+    const uploads = await Promise.all(req.files.map(file => uploadImageToCloudinary(file.buffer)));
+    const gallery = uploads.map(result => ({
+      url: result.secure_url,
+      public_id: result.public_id,
+      thumbnail: result.secure_url.replace('/upload/', '/upload/w_300,h_200,c_fill/')
+    }));
 
-          const result = await new Promise((resolve, reject) => {
-            const stream = cloudinary.uploader.upload_stream({
-              folder: 'properties',
-              resource_type: 'auto'
-            }, (error, result) => {
-              if (error) reject(error);
-              else resolve(result);
-            });
-            Readable.from(processedBuffer).pipe(stream);
-          });
-
-          resolve({
-            url: result.secure_url,
-            public_id: result.public_id,
-            thumbnail: result.secure_url.replace('/upload/', '/upload/w_300,h_200,c_fill/')
-          });
-        } catch (err) {
-          reject(err);
-        }
-      });
-    });
-
-    const uploadedImages = await Promise.all(uploadPromises);
-    property.images.push(...uploadedImages);
+    property.images.push(...gallery);
     await property.save();
-
     res.json(property);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
 const deletePropertyImage = async (req, res) => {
   try {
-    const { id, imageId } = req.params;
-    const property = await Property.findById(id);
+    const property = await Property.findById(req.params.id);
     if (!property) return res.status(404).json({ message: 'Property not found' });
 
-    await cloudinary.uploader.destroy(imageId);
-    property.images = property.images.filter(img => img.public_id !== imageId);
+    await cloudinary.uploader.destroy(req.params.imageId);
+    property.images = property.images.filter(img => img.public_id !== req.params.imageId);
     await property.save();
 
     res.json({ message: 'Image deleted', images: property.images });
@@ -313,17 +322,15 @@ const deletePropertyImage = async (req, res) => {
   }
 };
 
-// --- Add review ---
 const addPropertyReview = async (req, res) => {
   try {
-    const { rating, comment } = req.body;
     const property = await Property.findById(req.params.id);
     if (!property) return res.status(404).json({ message: 'Property not found' });
 
     const review = {
       user: req.user._id,
-      rating,
-      comment,
+      rating: req.body.rating,
+      comment: req.body.comment,
       createdAt: new Date()
     };
 
@@ -331,58 +338,48 @@ const addPropertyReview = async (req, res) => {
     await property.save();
 
     res.status(201).json({ message: 'Review added', review });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
   }
 };
 
-// --- Get property reviews ---
 const getPropertyReviews = async (req, res) => {
   try {
     const property = await Property.findById(req.params.id).populate('reviews.user', 'name');
     if (!property) return res.status(404).json({ message: 'Property not found' });
-
     res.json(property.reviews);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
-// --- Toggle favorite ---
 const toggleFavorite = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
-    const propertyId = req.params.id;
+    const index = user.favorites.indexOf(req.params.id);
 
-    const index = user.favorites.indexOf(propertyId);
-    if (index === -1) {
-      user.favorites.push(propertyId);
-    } else {
-      user.favorites.splice(index, 1);
-    }
+    if (index === -1) user.favorites.push(req.params.id);
+    else user.favorites.splice(index, 1);
 
     await user.save();
     res.json({ favorites: user.favorites });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
   }
 };
 
-// --- Get user favorites ---
 const getFavorites = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).populate({
       path: 'favorites',
       populate: { path: 'agent', select: 'name email' }
     });
-
     res.json(user.favorites);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
-// --- Track property views ---
 const trackPropertyView = async (req, res) => {
   try {
     const property = await Property.findById(req.params.id);
@@ -391,19 +388,15 @@ const trackPropertyView = async (req, res) => {
     property.views = (property.views || 0) + 1;
     property.lastViewed = new Date();
     property.viewHistory = property.viewHistory || [];
-    property.viewHistory.push({
-      timestamp: new Date(),
-      user: req.user ? req.user._id : null
-    });
+    property.viewHistory.push({ timestamp: new Date(), user: req.user?._id || null });
 
     await property.save();
     res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
-// --- Property analytics ---
 const getPropertyAnalytics = async (req, res) => {
   try {
     const property = await Property.findById(req.params.id);
@@ -418,21 +411,19 @@ const getPropertyAnalytics = async (req, res) => {
     };
 
     res.json(analytics);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };
 
-// --- Report property ---
 const reportProperty = async (req, res) => {
   try {
-    const { reason } = req.body;
     const property = await Property.findById(req.params.id);
     if (!property) return res.status(404).json({ message: 'Property not found' });
 
     const report = {
       user: req.user._id,
-      reason,
+      reason: req.body.reason,
       status: 'pending',
       createdAt: new Date()
     };
@@ -440,9 +431,9 @@ const reportProperty = async (req, res) => {
     property.reports.push(report);
     await property.save();
 
-    res.status(201).json({ message: 'Property reported successfully' });
-  } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(201).json({ message: 'Reported successfully' });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
   }
 };
 
