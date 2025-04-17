@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react'; 
 import { useNavigate, Link } from 'react-router-dom';
 import {
   Container, Paper, TextField, Button, Typography, Box, Checkbox,
   FormControlLabel, useTheme
 } from '@mui/material';
 import { toast } from 'react-toastify';
-import authService from '../../services/authService'; // ✅ Using centralized auth logic
+import authService from '../../services/authService';
 
 function Login() {
   const navigate = useNavigate();
@@ -29,8 +29,8 @@ function Login() {
 
   const validateForm = () => {
     const newErrors = {};
-
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
     if (!formData.email) {
       newErrors.email = 'Email is required';
     } else if (!emailRegex.test(formData.email)) {
@@ -65,7 +65,7 @@ function Login() {
 
     setIsLoading(true);
     try {
-      const { user } = await authService.login(formData); // ✅ Call authService
+      const { user } = await authService.login(formData);
 
       if (formData.rememberMe) {
         localStorage.setItem('rememberedEmail', formData.email);
@@ -74,7 +74,9 @@ function Login() {
       }
 
       toast.success(`Welcome back, ${user.name.split(' ')[0]}!`);
-      navigate('/');
+
+      // 🚀 Role-based redirect or just go to /dashboard
+      navigate('/dashboard');
     } catch (error) {
       toast.error(error.message || 'Login failed');
     } finally {
@@ -125,7 +127,6 @@ function Login() {
               helperText={errors.password}
               disabled={isLoading}
             />
-
             <FormControlLabel
               control={
                 <Checkbox
@@ -137,7 +138,6 @@ function Login() {
               }
               label="Remember me"
             />
-
             <Button
               type="submit"
               fullWidth
@@ -147,7 +147,6 @@ function Login() {
             >
               {isLoading ? 'Signing in...' : 'Sign In'}
             </Button>
-
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
               <Link to="/forgot-password">Forgot password?</Link>
               <Link to="/register">Register</Link>

@@ -1,10 +1,9 @@
-// real-estate-crm/client/src/components/routes/ProtectedRoute.jsx
 import { Navigate, useLocation } from 'react-router-dom';
 import { CircularProgress, Box } from '@mui/material';
 import useAuth from '../../contexts/useAuth';
 
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
-  const { user, loading } = useAuth(); // ✅ get from context
+  const { user, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {

@@ -1,140 +1,146 @@
-//real-estate-crm\client\src\services\propertyService.js
+// real-estate-crm/client/src/services/propertyService.js
+
 import axios from 'axios';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT) || 10000;
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT || '10000');
 
-// Axios instances
+// Axios instance for properties
 const propertyApi = axios.create({
-  baseURL: `${BASE_URL}/api/properties`,
+  baseURL: `${BASE_URL}/properties`,
   timeout: API_TIMEOUT,
   withCredentials: true
 });
 
+// Axios instance for dashboard
 const dashboardApi = axios.create({
-  baseURL: `${BASE_URL}/api/dashboard`,
+  baseURL: `${BASE_URL}/dashboard`,
   timeout: API_TIMEOUT,
   withCredentials: true
 });
 
-// Token interceptors
+// Add Authorization headers to both instances
 [propertyApi, dashboardApi].forEach(api => {
   api.interceptors.request.use(config => {
     const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   });
 
   api.interceptors.response.use(
-    response => response,
-    error => {
-      console.error('API Error:', error.response?.data || error.message);
-      return Promise.reject(error);
+    res => res,
+    err => {
+      console.error('API Error:', err.response?.data || err.message);
+      return Promise.reject(err);
     }
   );
 });
 
 export const propertyService = {
-  // Dashboard
+  // 🧩 Dashboard stats
   getDashboardStats: async () => {
-    const response = await dashboardApi.get('/');
-    return response.data;
+    const res = await dashboardApi.get('/');
+    return res.data;
   },
 
-  // Properties
+  // 📥 Fetch properties (with pagination + filters)
   getProperties: async (params = {}) => {
-    const response = await propertyApi.get('', { params });
-    return response.data;
+    try {
+      console.log("📤 GET /api/properties with params:", params);
+      const res = await propertyApi.get('/', { params });
+      console.log("📥 Response from /api/properties:", res);
+      return res; // 👈 Return FULL Axios response so `PropertyList.jsx` can use `res.data.properties`
+    } catch (err) {
+      console.error("❌ Failed to fetch properties:", err);
+      throw err;
+    }
   },
 
+  // 📄 Get single property
   getPropertyById: async (id) => {
-    const response = await propertyApi.get(`/${id}`);
-    return response.data;
+    const res = await propertyApi.get(`/${id}`);
+    return res.data;
   },
 
+  // 🆕 Create property
   createProperty: async (formData) => {
-    const config = {
+    const res = await propertyApi.post('/', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
-        'Accept': 'application/json'
+        Accept: 'application/json'
       }
-    };
-
-    console.log('Creating property with data:', formData);
-    const response = await propertyApi.post('/', formData, config);
-    console.log('Property created:', response.data);
-    return response;
+    });
+    return res.data;
   },
 
+  // ✏️ Update property
   updateProperty: async (id, data) => {
-    const config = data instanceof FormData ? {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-        'Accept': 'application/json'
-      }
-    } : {};
-
-    const response = await propertyApi.put(`/${id}`, data, config);
-    return response.data;
+    const isFormData = data instanceof FormData;
+    const res = await propertyApi.put(`/${id}`, data, {
+      headers: isFormData
+        ? { 'Content-Type': 'multipart/form-data', Accept: 'application/json' }
+        : {}
+    });
+    return res.data;
   },
 
+  // 🗑 Delete property
   deleteProperty: async (id) => {
-    const response = await propertyApi.delete(`/${id}`);
-    return response.data;
+    const res = await propertyApi.delete(`/${id}`);
+    return res.data;
   },
 
-  // Agent-specific
+  // 👤 Get properties by agent
   getAgentProperties: async (agentId) => {
-    const response = await propertyApi.get(`/agent/${agentId}`);
-    return response.data;
+    const res = await propertyApi.get(`/agent/${agentId}`);
+    return res.data;
   },
 
-  // Favorites
+  // ⭐ Favorites
   getFavorites: async () => {
-    const response = await propertyApi.get('/favorites/me');
-    return response.data;
+    const res = await propertyApi.get('/favorites/me');
+    return res.data;
   },
 
   toggleFavorite: async (id) => {
-    const response = await propertyApi.post(`/${id}/favorite`);
-    return response.data;
+    const res = await propertyApi.post(`/${id}/favorite`);
+    return res.data;
   },
 
-  // Search & Featured
-  searchProperties: async (filters) => {
-    const response = await propertyApi.get('/search', { params: filters });
-    return response.data;
+  // 🔍 Search / filters (for advanced use)
+  searchProperties: async (filters = {}) => {
+    const res = await propertyApi.get('/search', { params: filters });
+    return res.data;
   },
 
+  // 🌟 Get featured listings
   getFeaturedProperties: async () => {
-    const response = await propertyApi.get('/featured');
-    return response.data;
+    const res = await propertyApi.get('/featured');
+    return res.data;
   },
 
-  // Images
+  // 🖼 Upload images
   uploadImages: async (propertyId, files) => {
     const formData = new FormData();
     files.forEach(file => formData.append('images', file));
 
-    const response = await propertyApi.post(`/${propertyId}/images`, formData, {
+    const res = await propertyApi.post(`/${propertyId}/images`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
-        'Accept': 'application/json'
+        Accept: 'application/json'
       }
     });
-    return response.data;
+    return res.data;
   },
 
   deleteImage: async (propertyId, imageId) => {
-    const response = await propertyApi.delete(`/${propertyId}/images/${imageId}`);
-    return response.data;
+    const res = await propertyApi.delete(`/${propertyId}/images/${imageId}`);
+    return res.data;
   },
 
-  // Status update
+  // ✅ Update listing status (e.g. available/sold)
   updateStatus: async (propertyId, status) => {
-    const response = await propertyApi.patch(`/${propertyId}/status`, { status });
-    return response.data;
+    const res = await propertyApi.patch(`/${propertyId}/status`, { status });
+    return res.data;
   }
 };

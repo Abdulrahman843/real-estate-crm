@@ -4,22 +4,28 @@ import {
   Box, Grid, Typography, IconButton, Button, CircularProgress, Chip
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { compressImage, createImagePreview, revokeImagePreview, validateImage } from '../../utils/imageUpload';
+import {
+  compressImage,
+  createImagePreview,
+  revokeImagePreview,
+  validateImage
+} from '../../utils/imageUpload';
 
 const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 const CLOUDINARY_UPLOAD_URL = `https://api.cloudinary.com/v1_1/${cloudName}/upload`;
 
-const ImageUploader = ({ onUploadSuccess }) => {
+const ImageUploader = ({ onUploadSuccess, maxFiles = 5 }) => {
   const [images, setImages] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [uploadedImages, setUploadedImages] = useState([]);
 
   const onDrop = async (acceptedFiles) => {
-    if (acceptedFiles.length + images.length > 5) {
-      alert('Max 5 images allowed.');
+    if (acceptedFiles.length + images.length > maxFiles) {
+      alert(`Max ${maxFiles} images allowed.`);
       return;
     }
+
     const newImages = [];
     for (let file of acceptedFiles) {
       try {
@@ -31,6 +37,7 @@ const ImageUploader = ({ onUploadSuccess }) => {
         alert(err.message);
       }
     }
+
     setImages(prev => [...prev, ...newImages]);
   };
 
@@ -58,7 +65,7 @@ const ImageUploader = ({ onUploadSuccess }) => {
 
         const response = await fetch(CLOUDINARY_UPLOAD_URL, {
           method: 'POST',
-          body: formData,
+          body: formData
         });
 
         if (!response.ok) throw new Error('Upload failed');
@@ -93,7 +100,7 @@ const ImageUploader = ({ onUploadSuccess }) => {
       <Box {...getRootProps()} sx={{ cursor: 'pointer', textAlign: 'center' }}>
         <input {...getInputProps()} />
         <Typography variant="body1">
-          Drag & drop or click to select images (max 5)
+          Drag & drop or click to select images (max {maxFiles})
         </Typography>
       </Box>
 

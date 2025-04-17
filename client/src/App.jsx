@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import CssBaseline from '@mui/material/CssBaseline';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
@@ -38,7 +38,7 @@ function App() {
       websocketService.subscribeToNotifications((notification) => {
         toast(notification.message, {
           type: notification.type || 'info',
-          position: "top-right",
+          position: 'top-right',
           autoClose: 5000,
           hideProgressBar: false,
           closeOnClick: true,
@@ -59,29 +59,32 @@ function App() {
       <NotificationBell />
 
       <Routes>
-        {/* Public Routes */}
+        {/* 🌐 Public Routes */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
 
-        {/* Protected Routes with Layout */}
+        {/* 🔐 Protected Routes under Layout */}
         <Route element={<Layout />}>
-          {/* Dashboard */}
-          <Route path="/" element={
+          {/* 🔁 Redirect root to /dashboard */}
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+          {/* 📊 Dashboard */}
+          <Route path="/dashboard" element={
             <ProtectedRoute>
               <Dashboard />
             </ProtectedRoute>
           } />
 
-          {/* Profile */}
+          {/* 👤 Profile */}
           <Route path="/profile" element={
             <ProtectedRoute>
               <Profile />
             </ProtectedRoute>
           } />
 
-          {/* Messages */}
+          {/* 💬 Messaging */}
           <Route path="/messages" element={
             <ProtectedRoute>
               <MessagingPage />
@@ -93,7 +96,7 @@ function App() {
             </ProtectedRoute>
           } />
 
-          {/* Property Routes - Reordered for proper routing */}
+          {/* 🏠 Property Management */}
           <Route path="/properties/add" element={
             <ProtectedRoute allowedRoles={['agent', 'admin']}>
               <AddProperty />
@@ -115,7 +118,7 @@ function App() {
             </ProtectedRoute>
           } />
 
-          {/* Admin */}
+          {/* 🛠 Admin Panel */}
           <Route path="/admin" element={
             <ProtectedRoute allowedRoles={['admin']}>
               <AdminDashboard />
@@ -123,7 +126,7 @@ function App() {
           } />
         </Route>
 
-        {/* Custom Error Pages */}
+        {/* ⚠️ Custom Error Pages */}
         <Route path="/unauthorized" element={<Unauthorized />} />
         <Route path="/forbidden" element={<Forbidden />} />
         <Route path="*" element={<NotFound />} />
@@ -134,10 +137,10 @@ function App() {
         autoClose={5000}
         hideProgressBar={false}
         newestOnTop={true}
-        closeOnClick={true}
-        pauseOnFocusLoss={true}
-        draggable={true}
-        pauseOnHover={true}
+        closeOnClick
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
         theme="light"
       />
     </ErrorBoundary>

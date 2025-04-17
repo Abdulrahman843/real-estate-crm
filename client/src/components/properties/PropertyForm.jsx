@@ -1,3 +1,5 @@
+// real-estate-crm/client/src/components/properties/PropertyForm.jsx
+
 import { useState, useEffect } from 'react';
 import {
   Box, Paper, TextField, Button, Grid, FormControl,

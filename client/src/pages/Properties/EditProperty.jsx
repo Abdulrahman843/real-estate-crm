@@ -19,8 +19,8 @@ const EditProperty = () => {
   useEffect(() => {
     const fetchProperty = async () => {
       try {
-        const data = await propertyService.getPropertyById(id);
-        setProperty(data);
+        const response = await propertyService.getPropertyById(id);
+        setProperty(response); // Make sure this matches the response shape
       } catch {
         setError('Failed to load property');
       } finally {
@@ -33,11 +33,18 @@ const EditProperty = () => {
 
   const handleSubmit = async (formData) => {
     try {
-      await propertyService.updateProperty(id, formData);
+      const formDataToSend = new FormData();
+      formData.images?.forEach((file) => {
+        formDataToSend.append('images', file);
+      });
+      formDataToSend.append('data', JSON.stringify(formData));
+
+      await propertyService.updateProperty(id, formDataToSend);
+
       setSnackbar({ open: true, message: 'Property updated successfully!', severity: 'success' });
       setTimeout(() => navigate(`/properties/${id}`), 1500);
-    } catch {
-      setSnackbar({ open: true, message: 'Failed to update property', severity: 'error' });
+    } catch (error) {
+      setSnackbar({ open: true, message: error?.response?.data?.message || 'Failed to update property', severity: 'error' });
     }
   };
 

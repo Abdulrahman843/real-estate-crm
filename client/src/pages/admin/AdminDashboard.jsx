@@ -1,20 +1,39 @@
+// client/src/pages/admin/AdminDashboard.jsx
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Grid, Card, CardContent, Typography, Box } from '@mui/material';
-import { Person, House, Assignment, TrendingUp } from '@mui/icons-material';
+import {
+  Grid,
+  Card,
+  CardContent,
+  Typography,
+  Box,
+  CircularProgress
+} from '@mui/material';
+import {
+  Person,
+  House,
+  Assignment,
+  TrendingUp
+} from '@mui/icons-material';
 import api from '../../services/api';
 import useAuth from '../../contexts/useAuth';
 
+/**
+ * AdminDashboard Component
+ * Displays key statistics for admin users: users, properties, listings, transactions
+ */
 const AdminDashboard = () => {
+  const navigate = useNavigate();
+  const { isAdmin } = useAuth();
+
+  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalUsers: 0,
     totalProperties: 0,
     activeListings: 0,
     totalTransactions: 0
   });
-  const [loading, setLoading] = useState(true);
-  const { isAdmin } = useAuth();
-  const navigate = useNavigate();
 
   useEffect(() => {
     if (!isAdmin()) {
@@ -25,10 +44,10 @@ const AdminDashboard = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await api.get('/admin/stats');
-        setStats(response.data);
-      } catch (error) {
-        console.error('Error fetching admin stats:', error);
+        const res = await api.get('/admin/stats');
+        setStats(res.data);
+      } catch (err) {
+        console.error('Error fetching admin stats:', err);
       } finally {
         setLoading(false);
       }
@@ -38,10 +57,30 @@ const AdminDashboard = () => {
   }, []);
 
   const statCards = [
-    { title: 'Total Users', value: stats.totalUsers, icon: <Person />, color: '#1976d2' },
-    { title: 'Total Properties', value: stats.totalProperties, icon: <House />, color: '#2e7d32' },
-    { title: 'Active Listings', value: stats.activeListings, icon: <Assignment />, color: '#ed6c02' },
-    { title: 'Total Transactions', value: stats.totalTransactions, icon: <TrendingUp />, color: '#9c27b0' }
+    {
+      title: 'Total Users',
+      value: stats.totalUsers,
+      icon: <Person fontSize="large" />,
+      color: '#1976d2'
+    },
+    {
+      title: 'Total Properties',
+      value: stats.totalProperties,
+      icon: <House fontSize="large" />,
+      color: '#2e7d32'
+    },
+    {
+      title: 'Active Listings',
+      value: stats.activeListings,
+      icon: <Assignment fontSize="large" />,
+      color: '#ed6c02'
+    },
+    {
+      title: 'Total Transactions',
+      value: stats.totalTransactions,
+      icon: <TrendingUp fontSize="large" />,
+      color: '#9c27b0'
+    }
   ];
 
   return (
@@ -49,31 +88,40 @@ const AdminDashboard = () => {
       <Typography variant="h4" gutterBottom>
         Admin Dashboard
       </Typography>
+
       {loading ? (
-        <Typography>Loading dashboard...</Typography>
+        <Box display="flex" justifyContent="center" mt={4}>
+          <CircularProgress />
+        </Box>
       ) : (
         <Grid container spacing={3}>
           {statCards.map((card) => (
             <Grid item xs={12} sm={6} md={3} key={card.title}>
-              <Card>
+              <Card sx={{ boxShadow: 3 }}>
                 <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <Box display="flex" alignItems="center" mb={2}>
                     <Box
                       sx={{
-                        backgroundColor: card.color,
+                        bgcolor: card.color,
                         borderRadius: '50%',
-                        p: 1,
+                        width: 48,
+                        height: 48,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
                         mr: 2,
-                        color: 'white'
+                        color: '#fff'
                       }}
                     >
                       {card.icon}
                     </Box>
-                    <Typography color="textSecondary" variant="h6">
+                    <Typography variant="subtitle1" color="text.secondary">
                       {card.title}
                     </Typography>
                   </Box>
-                  <Typography variant="h4">{card.value}</Typography>
+                  <Typography variant="h4" fontWeight={600}>
+                    {card.value}
+                  </Typography>
                 </CardContent>
               </Card>
             </Grid>
