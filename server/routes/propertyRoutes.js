@@ -1,8 +1,8 @@
-// routes/propertyRoutes.js
 const express = require('express');
 const router = express.Router();
 const Joi = require('joi');
 
+// Controller functions
 const {
   getProperties,
   getAgentProperties,
@@ -23,6 +23,7 @@ const {
   trackPropertyView
 } = require('../controllers/propertyController');
 
+// Middleware
 const {
   protect,
   authorize,
@@ -34,57 +35,67 @@ const {
   handleUploadError
 } = require('../middleware/uploadMiddleware');
 
+
 // ------------------------
 // Joi Validation Schemas
 // ------------------------
 
-const propertySchema = {
-  title: Joi.string().min(3).max(100),
-  description: Joi.string().min(10),
-  price: Joi.number().min(1),
-  type: Joi.string().valid('house', 'apartment', 'condo', 'villa', 'land'),
-  propertyType: Joi.string().valid('house', 'apartment', 'condo', 'villa', 'land'),
-  status: Joi.string().valid('available', 'sold', 'pending', 'reserved', 'rented'),
+const basePropertySchema = Joi.object({
+  title: Joi.string().min(3).max(100).required(),
+  description: Joi.string().min(10).required(),
+  price: Joi.number().min(1).required(),
+  propertyType: Joi.string().valid('house', 'apartment', 'condo', 'villa', 'land').required(),
+  status: Joi.string().valid('available', 'sold', 'pending', 'reserved', 'rented').required(),
   location: Joi.object({
-    address: Joi.string(),
-    city: Joi.string(),
-    state: Joi.string(),
-    country: Joi.string(),
-    zipCode: Joi.string(),
-    lat: Joi.number(),
-    lng: Joi.number()
-  }),
+    address: Joi.string().required(),
+    city: Joi.string().required(),
+    state: Joi.string().required(),
+    country: Joi.string().allow('', null),
+    zipCode: Joi.string().required(),
+    lat: Joi.number().allow(null),
+    lng: Joi.number().allow(null)
+  }).required(),
   features: Joi.object({
-    bedrooms: Joi.number().min(1),
-    bathrooms: Joi.number().min(1),
-    area: Joi.number().min(0),
-    squareFeet: Joi.number().min(0),
-    yearBuilt: Joi.number(),
+    bedrooms: Joi.number().min(0).required(),
+    bathrooms: Joi.number().min(0).required(),
+    area: Joi.number().min(0).allow(null),
+    squareFeet: Joi.number().min(0).allow(null),
+    yearBuilt: Joi.number().allow(null),
     amenities: Joi.alternatives().try(
       Joi.array().items(Joi.string()),
       Joi.string()
-    )
-  }),
+    ).optional()
+  }).required(),
   amenities: Joi.alternatives().try(
     Joi.array().items(Joi.string()),
     Joi.string()
-  )
-};
+  ).optional()
+});
 
-const createSchema = Joi.object(propertySchema).required();
-const updateSchema = Joi.object(propertySchema).min(1);
-const statusSchema = Joi.object({ status: propertySchema.status.required() });
+const createSchema = basePropertySchema;
+
+const updateSchema = basePropertySchema.fork(
+  Object.keys(basePropertySchema.describe().keys),
+  schema => schema.optional()
+);
+
+const statusSchema = Joi.object({
+  status: basePropertySchema.extract('status').required()
+});
+
 
 // ------------------------
 // Public Routes
 // ------------------------
 
-router.get('/search', getProperties);
-router.get('/featured', getProperties);
-router.get('/', getProperties);
+router.get('/search', getProperties);         // Advanced search
+router.get('/featured', getProperties);       // Featured properties
+router.get('/agent/:agentId', getAgentProperties); // Agent's listings
+router.get('/favorites/me', protect, getFavorites);
 router.get('/:id/reviews', getPropertyReviews);
-router.get('/:id', getProperty);
-router.get('/agent/:agentId', getAgentProperties);
+router.get('/:id', getProperty);              // Get one
+router.get('/', getProperties);               // All properties
+
 
 // ------------------------
 // Protected Routes
@@ -92,32 +103,34 @@ router.get('/agent/:agentId', getAgentProperties);
 
 router.use(protect);
 
-// Property CRUD
+// Create property
 router.post(
   '/',
   authorize('admin', 'agent'),
   uploadMiddleware.any(),
   handleUploadError,
-  validateRequest(createSchema),
+  validateRequest(createSchema, 'data'),
   createProperty
 );
 
+// Update property
 router.put(
   '/:id',
   authorize('admin', 'agent'),
   uploadMiddleware.any(),
   handleUploadError,
-  validateRequest(updateSchema),
+  validateRequest(updateSchema, 'data'),
   updateProperty
 );
 
+// Delete property
 router.delete(
   '/:id',
   authorize('admin', 'agent'),
   deleteProperty
 );
 
-// Property Status Update
+// Update status (e.g. sold, pending)
 router.patch(
   '/:id/status',
   authorize('admin', 'agent'),
@@ -125,19 +138,28 @@ router.patch(
   updatePropertyStatus
 );
 
-// Favorites
-router.post('/:id/favorite', toggleFavorite);
-router.get('/favorites/me', getFavorites);
 
-// Reviews and Reports
-router.post('/:id/reviews', addPropertyReview);
-router.post('/:id/report', reportProperty);
+// ------------------------
+// Favorites & Reviews
+// ------------------------
 
-// Analytics and Tracking
+router.post('/:id/favorite', toggleFavorite);         // Add/remove from favorites
+router.post('/:id/reviews', addPropertyReview);       // Add review
+router.post('/:id/report', reportProperty);           // Report listing
+
+
+// ------------------------
+// Analytics & Tracking
+// ------------------------
+
 router.get('/:id/analytics', authorize('admin', 'agent'), getPropertyAnalytics);
 router.post('/:id/track', trackPropertyView);
 
+
+// ------------------------
 // Image Uploads
+// ------------------------
+
 router.post(
   '/:id/upload-image',
   authorize('admin', 'agent'),
@@ -159,5 +181,6 @@ router.delete(
   authorize('admin', 'agent'),
   deletePropertyImage
 );
+
 
 module.exports = router;

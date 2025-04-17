@@ -34,7 +34,8 @@ const uploadImageToCloudinary = async (fileBuffer) => {
 
 const createProperty = async (req, res) => {
   try {
-    const data = parseJSONBody(req.body.data);
+    const raw = req.body.data || req.body;
+    const data = parseJSONBody(raw);
     const images = req.files || [];
 
     const uploadedImages = [];
@@ -60,6 +61,8 @@ const createProperty = async (req, res) => {
       });
     }
 
+    console.log('🔍 Agent attached to property:', req.user._id);
+
     const newProperty = new Property({
       title: data.title,
       description: data.description,
@@ -83,7 +86,7 @@ const createProperty = async (req, res) => {
         bathrooms: parseInt(data.features?.bathrooms || 0),
         squareFeet: parseInt(data.features?.area || data.features?.squareFeet || 0),
         yearBuilt: parseInt(data.features?.yearBuilt || 0),
-        amenities: Array.isArray(data.amenities) ? data.amenities : []
+        amenities: Array.isArray(data.features?.amenities) ? data.features.amenities : []
       },
       amenities: Array.isArray(data.amenities) ? data.amenities : [],
       images: uploadedImages
@@ -93,76 +96,6 @@ const createProperty = async (req, res) => {
     res.status(201).json(saved);
   } catch (error) {
     console.error('[Create Property Error]', error);
-    res.status(400).json({ message: error.message });
-  }
-};
-
-const updateProperty = async (req, res) => {
-  try {
-    const property = await Property.findById(req.params.id);
-    if (!property) return res.status(404).json({ message: 'Property not found' });
-    if (property.agent.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Not authorized' });
-    }
-
-    const data = parseJSONBody(req.body.data);
-    const images = req.files || [];
-
-    const uploadedImages = [];
-
-    for (const file of images) {
-      const result = await uploadImageToCloudinary(file.buffer);
-      uploadedImages.push({
-        url: result.secure_url,
-        public_id: result.public_id,
-        thumbnail: result.secure_url.replace('/upload/', '/upload/w_300,h_200,c_fill/'),
-        label: uploadedImages.length === 0 ? 'cover' : 'gallery'
-      });
-    }
-
-    if (!uploadedImages.length && (!property.images || !property.images.length)) {
-      const fullAddress = `${data.location?.address || ''}, ${data.location?.city || ''}, ${data.location?.state || ''}, ${data.location?.zipCode || ''}, ${data.location?.country || ''}`;
-      const streetImage = getStreetViewImage(fullAddress);
-      uploadedImages.push({
-        url: streetImage,
-        public_id: 'street_view_placeholder',
-        thumbnail: streetImage.replace('800x600', '300x200'),
-        label: 'cover'
-      });
-    }
-
-    property.set({
-      title: data.title,
-      description: data.description,
-      price: parseFloat(data.price),
-      type: data.propertyType || data.type,
-      status: data.status || 'available',
-      location: {
-        address: data.location?.address,
-        city: data.location?.city,
-        state: data.location?.state,
-        zipCode: data.location?.zipCode,
-        country: data.location?.country,
-        coordinates: {
-          lat: parseFloat(data.location?.lat || 0),
-          lng: parseFloat(data.location?.lng || 0)
-        }
-      },
-      features: {
-        bedrooms: parseInt(data.features?.bedrooms || 0),
-        bathrooms: parseInt(data.features?.bathrooms || 0),
-        squareFeet: parseInt(data.features?.area || data.features?.squareFeet || 0),
-        yearBuilt: parseInt(data.features?.yearBuilt || 0),
-        amenities: Array.isArray(data.amenities) ? data.amenities : []
-      },
-      amenities: Array.isArray(data.amenities) ? data.amenities : [],
-      images: uploadedImages.length > 0 ? uploadedImages : property.images,
-      updatedAt: new Date()
-    });
-
-    await property.save();
-    res.json(property);
-  } catch (error) {
     res.status(400).json({ message: error.message });
   }
 };
@@ -233,6 +166,93 @@ const getAgentProperties = async (req, res) => {
   }
 };
 
+const updateProperty = async (req, res) => {
+  try {
+    const property = await Property.findById(req.params.id);
+    if (!property) return res.status(404).json({ message: 'Property not found' });
+
+    // Authorization: only admin or the agent who owns it
+    if (property.agent.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized to update this property' });
+    }
+
+    // Parse formData JSON payload
+    const data = typeof req.body.data === 'string'
+      ? JSON.parse(req.body.data)
+      : req.body.data;
+
+    const images = req.files || [];
+    const uploadedImages = [];
+
+    for (const file of images) {
+      const result = await uploadImageToCloudinary(file.buffer);
+      uploadedImages.push({
+        url: result.secure_url,
+        public_id: result.public_id,
+        thumbnail: result.secure_url.replace('/upload/', '/upload/w_300,h_200,c_fill/'),
+        label: uploadedImages.length === 0 ? 'cover' : 'gallery'
+      });
+    }
+
+    // Fallback to Street View image if no image was uploaded
+    if (!uploadedImages.length && (!property.images || !property.images.length)) {
+      const fullAddress = `${data.location?.address || ''}, ${data.location?.city || ''}, ${data.location?.state || ''}, ${data.location?.zipCode || ''}, ${data.location?.country || ''}`;
+      const streetImage = getStreetViewImage(fullAddress);
+
+      uploadedImages.push({
+        url: streetImage,
+        public_id: 'street_view_placeholder',
+        thumbnail: streetImage.replace('800x600', '300x200'),
+        label: 'cover'
+      });
+    }
+
+    // Update fields
+    property.set({
+      title: data.title,
+      description: data.description,
+      price: parseFloat(data.price),
+      type: data.propertyType || data.type,
+      status: data.status || 'available',
+      location: {
+        address: data.location?.address,
+        city: data.location?.city,
+        state: data.location?.state,
+        zipCode: data.location?.zipCode,
+        country: data.location?.country,
+        coordinates: {
+          lat: parseFloat(data.location?.lat || 0),
+          lng: parseFloat(data.location?.lng || 0)
+        }
+      },
+      features: {
+        bedrooms: parseInt(data.features?.bedrooms || 0),
+        bathrooms: parseInt(data.features?.bathrooms || 0),
+        squareFeet: parseInt(data.features?.area || data.features?.squareFeet || 0),
+        yearBuilt: parseInt(data.features?.yearBuilt || 0),
+        amenities: Array.isArray(data.features?.amenities)
+          ? data.features.amenities
+          : typeof data.features?.amenities === 'string'
+            ? [data.features.amenities]
+            : []
+      },
+      amenities: Array.isArray(data.amenities)
+        ? data.amenities
+        : typeof data.amenities === 'string'
+          ? [data.amenities]
+          : [],
+      images: uploadedImages.length ? uploadedImages : property.images,
+      updatedAt: new Date()
+    });
+
+    await property.save();
+    res.json(property);
+  } catch (error) {
+    console.error('[Update Property Error]', error);
+    res.status(400).json({ message: error.message });
+  }
+};
+
 const updatePropertyStatus = async (req, res) => {
   try {
     const property = await Property.findById(req.params.id);
@@ -253,12 +273,21 @@ const deleteProperty = async (req, res) => {
   try {
     const property = await Property.findById(req.params.id);
     if (!property) return res.status(404).json({ message: 'Property not found' });
-    if (property.agent.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
+
+    // Authorization check
+    if (
+      property.agent.toString() !== req.user._id.toString() &&
+      req.user.role !== 'admin'
+    ) {
       return res.status(403).json({ message: 'Not authorized' });
     }
-    await property.remove();
+
+    // ✅ Use proper Mongoose delete method
+    await Property.findByIdAndDelete(req.params.id);
+
     res.json({ message: 'Deleted successfully' });
   } catch (err) {
+    console.error('[Delete Property Error]', err);
     res.status(500).json({ message: err.message });
   }
 };
@@ -438,12 +467,12 @@ const reportProperty = async (req, res) => {
 };
 
 module.exports = {
+  createProperty,
   getProperties,
   getProperty,
   getAgentProperties,
-  updatePropertyStatus,
-  createProperty,
   updateProperty,
+  updatePropertyStatus,
   deleteProperty,
   uploadPropertyImage,
   uploadPropertyGallery,
