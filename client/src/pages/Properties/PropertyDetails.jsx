@@ -12,8 +12,6 @@ import {
 import { propertyService } from '../../services/propertyService';
 import Lightbox from 'yet-another-react-lightbox';
 import 'yet-another-react-lightbox/styles.css';
-import Thumbnails from 'yet-another-react-lightbox/plugins/thumbnails';
-import 'yet-another-react-lightbox/plugins/thumbnails.css';
 
 const PropertyDetails = () => {
   const { id } = useParams();
