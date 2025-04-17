@@ -45,13 +45,13 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-dropzone": "^14.3.8",
-    "react-image-lightbox": "^5.1.4",
     "react-redux": "^9.2.0",
     "react-router-dom": "^6.30.0",
     "react-toastify": "^11.0.5",
     "recharts": "^2.15.2",
     "socket.io-client": "^4.8.1",
     "web-vitals": "^4.2.4",
+    "yet-another-react-lightbox": "^3.22.0",
     "yup": "^1.6.1"
   },
   "devDependencies": {
