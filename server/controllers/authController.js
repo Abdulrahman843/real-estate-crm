@@ -4,7 +4,14 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const nodemailer = require('nodemailer');
 
-// Register user
+// Generate JWT token
+const generateToken = (id) => {
+  return jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRE || '30d',
+  });
+};
+
+// @desc Register new user
 const register = async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
@@ -20,7 +27,7 @@ const register = async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      role:['admin', 'agent', 'client'].includes(role) ? role : 'client'
+      role: ['admin', 'agent', 'client'].includes(role) ? role : 'client',
     });
 
     return res.status(201).json({
@@ -28,24 +35,33 @@ const register = async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
-      token: generateToken(user._id)
+      token: generateToken(user._id),
     });
   } catch (error) {
+    console.error('Register Error:', error);
     return res.status(500).json({ message: error.message });
   }
 };
 
-// Login user
+// @desc Login user
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Email and password are required' });
+    }
 
-    const user = await User.findOne({ email });
-    console.log('INPUT:', email, password);
-    console.log('DB USER:', user);
+    const user = await User.findOne({ email }).select('+password');
+    console.log('INPUT:', email);
+    console.log('USER FOUND:', user);
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(400).json({ message: 'Invalid credentials' });
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid credentials' });
     }
 
     return res.status(200).json({
@@ -53,14 +69,15 @@ const login = async (req, res) => {
       name: user.name,
       email: user.email,
       role: user.role,
-      token: generateToken(user._id)
+      token: generateToken(user._id),
     });
   } catch (error) {
-    return res.status(500).json({ message: error.message });
+    console.error('Login Error:', error);
+    return res.status(500).json({ message: 'Server error during login' });
   }
 };
 
-// Get current user (protected route)
+// @desc Get current user (protected)
 const getCurrentUser = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
@@ -72,7 +89,7 @@ const getCurrentUser = async (req, res) => {
   }
 };
 
-// Forgot Password
+// @desc Forgot password
 const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -80,7 +97,7 @@ const forgotPassword = async (req, res) => {
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     const token = crypto.randomBytes(32).toString('hex');
-    const tokenExpire = Date.now() + 3600000; // 1 hour
+    const tokenExpire = Date.now() + 3600000;
 
     user.resetPasswordToken = token;
     user.resetPasswordExpire = tokenExpire;
@@ -88,23 +105,19 @@ const forgotPassword = async (req, res) => {
 
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password/${token}`;
 
-    // Configure nodemailer
     const transporter = nodemailer.createTransport({
-      service: 'gmail', // or another SMTP service
+      service: 'gmail',
       auth: {
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
+        pass: process.env.EMAIL_PASS,
+      },
     });
 
     const message = {
       to: email,
       from: process.env.EMAIL_USER,
       subject: 'Password Reset Request',
-      html: `
-        <p>You requested a password reset</p>
-        <p><a href="${resetUrl}">Click here to reset your password</a></p>
-      `
+      html: `<p>You requested a password reset</p><p><a href="${resetUrl}">Click here to reset your password</a></p>`,
     };
 
     await transporter.sendMail(message);
@@ -114,7 +127,7 @@ const forgotPassword = async (req, res) => {
   }
 };
 
-// Reset Password
+// @desc Reset password
 const resetPassword = async (req, res) => {
   try {
     const { token } = req.params;
@@ -122,7 +135,7 @@ const resetPassword = async (req, res) => {
 
     const user = await User.findOne({
       resetPasswordToken: token,
-      resetPasswordExpire: { $gt: Date.now() }
+      resetPasswordExpire: { $gt: Date.now() },
     });
 
     if (!user) return res.status(400).json({ message: 'Invalid or expired token' });
@@ -138,11 +151,15 @@ const resetPassword = async (req, res) => {
   }
 };
 
-// JWT Token generator
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRE || '30d'
-  });
+// 🔍 Dev only: Get all users
+const getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find().select('-password');
+    console.log('🧾 All Users:', users);
+    res.status(200).json(users);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 };
 
 module.exports = {
@@ -150,5 +167,6 @@ module.exports = {
   login,
   getCurrentUser,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  getAllUsers, // Add this to your route temporarily
 };

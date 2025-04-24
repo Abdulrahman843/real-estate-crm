@@ -5,13 +5,15 @@ const {
   login,
   getCurrentUser,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  getAllUsers,
 } = require('../controllers/authController');
 const { protect } = require('../middleware/authMiddleware');
 
 router.post('/register', register);
 router.post('/login', login);
 router.get('/me', protect, getCurrentUser);
+router.get('/all', getAllUsers);
 
 // ✅ Add these two routes
 router.post('/forgot-password', forgotPassword);
