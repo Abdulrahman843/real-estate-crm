@@ -1,15 +1,16 @@
-import { useState, useEffect } from 'react'; 
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import {
-  Container, Paper, TextField, Button, Typography, Box, Checkbox,
-  FormControlLabel, useTheme
+  Container, Paper, TextField, Button, Typography, Box,
+  Checkbox, FormControlLabel, useTheme
 } from '@mui/material';
 import { toast } from 'react-toastify';
-import authService from '../../services/authService';
+import useAuth from '../../contexts/useAuth';
 
 function Login() {
   const navigate = useNavigate();
   const theme = useTheme();
+  const { login } = useAuth();
 
   const [formData, setFormData] = useState({
     email: '',
@@ -31,17 +32,11 @@ function Login() {
     const newErrors = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (!formData.email) {
-      newErrors.email = 'Email is required';
-    } else if (!emailRegex.test(formData.email)) {
-      newErrors.email = 'Invalid email format';
-    }
+    if (!formData.email) newErrors.email = 'Email is required';
+    else if (!emailRegex.test(formData.email)) newErrors.email = 'Invalid email format';
 
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
+    if (!formData.password) newErrors.password = 'Password is required';
+    else if (formData.password.length < 6) newErrors.password = 'Min 6 characters';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -53,7 +48,6 @@ function Login() {
       ...prev,
       [name]: type === 'checkbox' ? checked : value
     }));
-
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -65,7 +59,10 @@ function Login() {
 
     setIsLoading(true);
     try {
-      const { user } = await authService.login(formData);
+      const response = await login(formData);
+      if (!response?.user) throw new Error('Login failed');
+
+      const { user } = response;
 
       if (formData.rememberMe) {
         localStorage.setItem('rememberedEmail', formData.email);
@@ -73,12 +70,10 @@ function Login() {
         localStorage.removeItem('rememberedEmail');
       }
 
-      toast.success(`Welcome back, ${user.name.split(' ')[0]}!`);
-
-      // 🚀 Role-based redirect or just go to /dashboard
+      toast.success(`Welcome back, ${user.name?.split(' ')[0] || 'User'}!`);
       navigate('/dashboard');
     } catch (error) {
-      toast.error(error.message || 'Login failed');
+      toast.error(error.message || 'Login error');
     } finally {
       setIsLoading(false);
     }
@@ -90,22 +85,16 @@ function Login() {
         <Paper elevation={3} sx={{
           p: 4,
           width: '100%',
-          bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'background.paper',
-          color: theme.palette.text.primary
+          bgcolor: theme.palette.mode === 'dark' ? 'grey.900' : 'background.paper'
         }}>
           <Typography component="h1" variant="h5" align="center" gutterBottom>
             Sign In
           </Typography>
           <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
             <TextField
-              margin="normal"
-              required
-              fullWidth
-              id="email"
+              required fullWidth margin="normal"
               label="Email Address"
               name="email"
-              autoComplete="email"
-              autoFocus
               value={formData.email}
               onChange={handleChange}
               error={!!errors.email}
@@ -113,14 +102,10 @@ function Login() {
               disabled={isLoading}
             />
             <TextField
-              margin="normal"
-              required
-              fullWidth
-              name="password"
+              required fullWidth margin="normal"
               label="Password"
               type="password"
-              id="password"
-              autoComplete="current-password"
+              name="password"
               value={formData.password}
               onChange={handleChange}
               error={!!errors.password}
